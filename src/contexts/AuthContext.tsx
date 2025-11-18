@@ -1,25 +1,36 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 export type UserRole = 'buyer' | 'seller' | 'admin';
+
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  phone?: string;
+  role: UserRole;
+  premium: boolean;
+  scans_today: number;
+  scan_limit: number;
+}
 
 export interface User {
   id: string;
   email: string;
-  phone?: string;
-  role: UserRole;
-  premium: boolean;
-  scansToday: number;
-  scanLimit: number;
+  profile: UserProfile | null;
 }
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, phone: string, role: UserRole) => Promise<void>;
   logout: () => void;
   upgradeToPremium: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,74 +43,152 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching profile:', error);
+      return null;
+    }
+    
+    return data as UserProfile;
+  };
+
+  const refreshProfile = async () => {
+    if (!session?.user) return;
+    const profile = await fetchProfile(session.user.id);
+    if (profile) {
+      setUser({
+        id: session.user.id,
+        email: session.user.email!,
+        profile,
+      });
+    }
+  };
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('safebazaar_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+        
+        if (currentSession?.user) {
+          const profile = await fetchProfile(currentSession.user.id);
+          setUser({
+            id: currentSession.user.id,
+            email: currentSession.user.email!,
+            profile,
+          });
+        } else {
+          setUser(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      if (currentSession?.user) {
+        fetchProfile(currentSession.user.id).then(profile => {
+          setUser({
+            id: currentSession.user.id,
+            email: currentSession.user.email!,
+            profile,
+          });
+          setIsLoading(false);
+        });
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Mock login - in production, call backend API
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     
-    const mockUser: User = {
-      id: 'user_' + Date.now(),
-      email,
-      role: 'buyer',
-      premium: false,
-      scansToday: 0,
-      scanLimit: 5,
-    };
+    if (error) {
+      toast.error(error.message);
+      throw error;
+    }
     
-    setUser(mockUser);
-    localStorage.setItem('safebazaar_user', JSON.stringify(mockUser));
     toast.success('Welcome back! Karibu!');
   };
 
   const signup = async (email: string, password: string, phone: string, role: UserRole) => {
-    // Mock signup
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const redirectUrl = `${window.location.origin}/`;
     
-    const mockUser: User = {
-      id: 'user_' + Date.now(),
+    const { error } = await supabase.auth.signUp({
       email,
-      phone,
-      role,
-      premium: false,
-      scansToday: 0,
-      scanLimit: 5,
-    };
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          phone,
+          role,
+        }
+      }
+    });
     
-    setUser(mockUser);
-    localStorage.setItem('safebazaar_user', JSON.stringify(mockUser));
+    if (error) {
+      toast.error(error.message);
+      throw error;
+    }
+    
     toast.success('Account created! Karibu tena!');
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      toast.error(error.message);
+      throw error;
+    }
+    
     setUser(null);
-    localStorage.removeItem('safebazaar_user');
+    setSession(null);
     toast.success('Logged out successfully');
   };
 
-  const upgradeToPremium = () => {
-    if (!user) return;
+  const upgradeToPremium = async () => {
+    if (!user?.profile) return;
     
-    const updatedUser = { ...user, premium: true, scanLimit: 999 };
-    setUser(updatedUser);
-    localStorage.setItem('safebazaar_user', JSON.stringify(updatedUser));
+    const { error } = await supabase
+      .from('profiles')
+      .update({ premium: true, scan_limit: 999 })
+      .eq('user_id', user.id);
+    
+    if (error) {
+      toast.error('Failed to upgrade to premium');
+      throw error;
+    }
+    
+    await refreshProfile();
     toast.success('🎉 Upgraded to Premium!');
   };
 
   return (
     <AuthContext.Provider value={{
       user,
-      isAuthenticated: !!user,
+      session,
+      isAuthenticated: !!session,
+      isLoading,
       login,
       signup,
       logout,
       upgradeToPremium,
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

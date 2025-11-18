@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Navigation from '@/components/Navigation';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const { login, signup, isAuthenticated, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      navigate('/scan');
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [signupData, setSignupData] = useState({ 
@@ -115,7 +122,28 @@ const Auth = () => {
                     value={signupData.password}
                     onChange={(e) => setSignupData({...signupData, password: e.target.value})}
                     required
+                    minLength={6}
                   />
+                </div>
+                <div>
+                  <Label className="mb-3 block">I am a:</Label>
+                  <RadioGroup 
+                    value={signupData.role} 
+                    onValueChange={(value) => setSignupData({...signupData, role: value as UserRole})}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="buyer" id="buyer" />
+                      <Label htmlFor="buyer" className="font-normal cursor-pointer">
+                        Buyer - Shop safely online
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="seller" id="seller" />
+                      <Label htmlFor="seller" className="font-normal cursor-pointer">
+                        Seller - Build trust with customers
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? 'Creating Account...' : 'Sign Up'}

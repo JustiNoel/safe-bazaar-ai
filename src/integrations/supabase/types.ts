@@ -14,16 +14,156 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      products: {
+        Row: {
+          authenticity_score: number | null
+          created_at: string
+          id: string
+          image_url: string | null
+          price: number | null
+          product_name: string | null
+          source_platform: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          authenticity_score?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          price?: number | null
+          product_name?: string | null
+          source_platform?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          authenticity_score?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          price?: number | null
+          product_name?: string | null
+          source_platform?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          last_scan_reset: string | null
+          phone: string | null
+          premium: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          scan_limit: number
+          scans_today: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_scan_reset?: string | null
+          phone?: string | null
+          premium?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          scan_limit?: number
+          scans_today?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_scan_reset?: string | null
+          phone?: string | null
+          premium?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          scan_limit?: number
+          scans_today?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scans: {
+        Row: {
+          alternatives: Json | null
+          created_at: string
+          id: string
+          is_guest: boolean | null
+          overall_score: number
+          product_id: string | null
+          risk_breakdown: Json | null
+          user_id: string | null
+          verdict: string
+        }
+        Insert: {
+          alternatives?: Json | null
+          created_at?: string
+          id?: string
+          is_guest?: boolean | null
+          overall_score: number
+          product_id?: string | null
+          risk_breakdown?: Json | null
+          user_id?: string | null
+          verdict: string
+        }
+        Update: {
+          alternatives?: Json | null
+          created_at?: string
+          id?: string
+          is_guest?: boolean | null
+          overall_score?: number
+          product_id?: string | null
+          risk_breakdown?: Json | null
+          user_id?: string | null
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scans_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      reset_daily_scans: { Args: never; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "buyer" | "seller" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +290,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["buyer", "seller", "admin"],
+    },
   },
 } as const
