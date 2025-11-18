@@ -2,249 +2,76 @@ import { AlertCircle, CheckCircle, TrendingUp, Shield, Award, Zap } from "lucide
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface RiskAssessmentProps {
   onNewScan: () => void;
   productImage?: string;
+  assessmentData?: any;
 }
 
-const RiskAssessment = ({ onNewScan, productImage }: RiskAssessmentProps) => {
-  // Mock data - in production this would come from AI analysis
-  const overallScore = 28;
-  const verdict = overallScore >= 70 ? "safe" : overallScore >= 40 ? "caution" : "unsafe";
+const RiskAssessment = ({ onNewScan, productImage, assessmentData }: RiskAssessmentProps) => {
+  const { user } = useAuth();
+  const isPremium = user?.profile?.premium;
+  const overallScore = assessmentData?.overall_score || 45;
+  const verdict = assessmentData?.verdict || (overallScore >= 70 ? "safe" : overallScore >= 40 ? "caution" : "unsafe");
   
-  const riskFactors = [
-    {
-      icon: Shield,
-      name: "Vendor Trust",
-      weight: "40%",
-      score: 25,
-      status: "High Risk",
-      details: "60% negative reviews; Account created 30 days ago",
-      color: "text-destructive",
-    },
-    {
-      icon: Award,
-      name: "Product Authenticity",
-      weight: "30%",
-      score: 35,
-      status: "Suspicious",
-      details: "Branding inconsistencies detected; Likely counterfeit",
-      color: "text-warning",
-    },
-    {
-      icon: Zap,
-      name: "M-Pesa & Supply Chain",
-      weight: "20%",
-      score: 20,
-      status: "Red Flag",
-      details: "Vendor location flagged (Kisumu); No verifiable sourcing",
-      color: "text-destructive",
-    },
-    {
-      icon: TrendingUp,
-      name: "Price Anomaly",
-      weight: "10%",
-      score: 45,
-      status: "Below Market",
-      details: "50% below Jumia average - potential fake",
-      color: "text-warning",
-    },
+  const defaultRiskFactors = [
+    { icon: Shield, name: "Vendor Trust", weight: "40%", score: 40, details: "Limited vendor history available" },
+    { icon: Award, name: "Product Authenticity", weight: "30%", score: 55, details: "Unable to verify authenticity from image" },
+    { icon: Zap, name: "M-Pesa & Supply Chain", weight: "20%", score: 45, details: "Payment and supply chain not verified" },
+    { icon: TrendingUp, name: "Price Analysis", weight: "10%", score: 60, details: "Price within normal market range" },
   ];
 
-  const alternatives = [
-    {
-      name: "iPhone 13 Pro - Verified Seller",
-      vendor: "TechHub Kenya (Jumia Official)",
-      price: "KSh 89,999",
-      trustScore: 95,
-      savings: "+20%",
-    },
-    {
-      name: "iPhone 13 Pro - Certified",
-      vendor: "Kilimall Official Store",
-      price: "KSh 92,500",
-      trustScore: 92,
-      savings: "+23%",
-    },
-    {
-      name: "iPhone 13 Pro - Authentic",
-      vendor: "Safaricom Shop",
-      price: "KSh 94,999",
-      trustScore: 98,
-      savings: "+27%",
-    },
+  const riskFactors = assessmentData?.risk_factors?.map((factor: any, idx: number) => ({
+    icon: [Shield, Award, Zap, TrendingUp][idx] || Shield,
+    name: factor.name,
+    weight: `${factor.weight}%`,
+    score: factor.score,
+    details: factor.details,
+  })) || defaultRiskFactors;
+
+  const alternatives = assessmentData?.safer_alternatives || [
+    { name: "Verified Seller Alternative", platform: "Jumia Kenya", price: "KSh 89,999", trust_score: 85, reason: "Established vendor" },
   ];
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">
-          Risk Assessment Results
-        </h1>
-        <p className="text-muted-foreground">
-          AI-powered analysis complete
-        </p>
-      </div>
-
-      {/* Overall Score */}
+      <div className="text-center"><h1 className="text-3xl md:text-4xl font-bold mb-2">Risk Assessment Results</h1><p className="text-muted-foreground">AI-powered analysis complete</p></div>
+      
       <Card className="p-8 shadow-medium">
         <div className="flex flex-col md:flex-row gap-8 items-center">
-          {/* Product Image */}
-          {productImage && (
-            <div className="w-full md:w-48 h-48 rounded-lg overflow-hidden flex-shrink-0">
-              <img 
-                src={productImage} 
-                alt="Scanned product" 
-                className="w-full h-full object-cover"
-              />
+          {productImage && <div className="w-full md:w-48 h-48 rounded-lg overflow-hidden border"><img src={productImage} alt="Product" className="w-full h-full object-cover" /></div>}
+          <div className="flex flex-col items-center">
+            <div className={`w-32 h-32 rounded-full flex items-center justify-center ${verdict === "safe" ? "bg-success/20" : verdict === "caution" ? "bg-warning/20" : "bg-destructive/20"}`}>
+              <div className="text-center"><div className={`text-4xl font-bold ${verdict === "safe" ? "text-success" : verdict === "caution" ? "text-warning" : "text-destructive"}`}>{overallScore}</div><div className="text-sm text-muted-foreground">/ 100</div></div>
             </div>
-          )}
-
-          {/* Score Circle */}
-          <div className="flex flex-col items-center flex-shrink-0">
-            <div className={`relative w-32 h-32 rounded-full flex items-center justify-center ${
-              verdict === "safe" ? "bg-success/20" : 
-              verdict === "caution" ? "bg-warning/20" : "bg-destructive/20"
-            }`}>
-              <div className="text-center">
-                <div className={`text-4xl font-bold ${
-                  verdict === "safe" ? "text-success" : 
-                  verdict === "caution" ? "text-warning" : "text-destructive"
-                }`}>
-                  {overallScore}
-                </div>
-                <div className="text-sm text-muted-foreground">/ 100</div>
-              </div>
-            </div>
-            <div className="mt-4 text-center">
-              {verdict === "unsafe" ? (
-                <div className="flex items-center gap-2 text-destructive font-semibold">
-                  <AlertCircle className="w-5 h-5" />
-                  HIGH RISK - AVOID
-                </div>
-              ) : verdict === "caution" ? (
-                <div className="flex items-center gap-2 text-warning font-semibold">
-                  <AlertCircle className="w-5 h-5" />
-                  PROCEED WITH CAUTION
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-success font-semibold">
-                  <CheckCircle className="w-5 h-5" />
-                  SAFE TO PROCEED
-                </div>
-              )}
-            </div>
+            <div className="mt-4 text-center">{verdict === "unsafe" ? <AlertCircle className="w-6 h-6 text-destructive" /> : <CheckCircle className="w-6 h-6 text-success" />}<div className="font-bold mt-2">{verdict === "safe" ? "Safe to Proceed" : verdict === "caution" ? "Proceed with Caution" : "Unsafe - Avoid"}</div></div>
           </div>
-
-          {/* Summary */}
-          <div className="flex-1 text-center md:text-left">
-            <h2 className="text-2xl font-bold mb-2">Verdict: High Scam Risk Detected</h2>
-            <p className="text-muted-foreground mb-4">
-              Our AI analysis indicates this product has multiple red flags. We strongly recommend 
-              exploring the safer alternatives below from verified vendors.
-            </p>
-            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-              <span className="px-3 py-1 bg-destructive/10 text-destructive text-sm rounded-full">
-                New Vendor
-              </span>
-              <span className="px-3 py-1 bg-destructive/10 text-destructive text-sm rounded-full">
-                Counterfeit Risk
-              </span>
-              <span className="px-3 py-1 bg-warning/10 text-warning text-sm rounded-full">
-                Below Market Price
-              </span>
-            </div>
-          </div>
+          <div className="flex-1"><h3 className="text-xl font-semibold mb-3">Assessment Summary</h3><p className="text-muted-foreground mb-4">{verdict === "safe" ? "Product passes safety checks" : "Review details carefully before purchasing"}</p></div>
         </div>
       </Card>
 
-      {/* Risk Breakdown */}
-      <Card className="p-6 md:p-8 shadow-medium">
-        <h3 className="text-xl font-bold mb-6">Detailed Risk Breakdown</h3>
+      <Card className="p-6 shadow-medium">
+        <h2 className="text-2xl font-bold mb-6">Risk Breakdown</h2>
         <div className="space-y-6">
-          {riskFactors.map((factor, index) => (
-            <div key={index} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <factor.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{factor.name}</span>
-                      <span className="text-xs text-muted-foreground">({factor.weight})</span>
-                    </div>
-                    <span className={`text-sm font-medium ${factor.color}`}>
-                      {factor.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={`text-2xl font-bold ${factor.color}`}>
-                    {factor.score}
-                  </div>
-                  <div className="text-xs text-muted-foreground">/ 100</div>
-                </div>
-              </div>
-              <Progress value={factor.score} className="h-2" />
-              <p className="text-sm text-muted-foreground pl-13">
-                {factor.details}
-              </p>
-            </div>
+          {riskFactors.map((factor: any, idx: number) => {
+            const Icon = factor.icon;
+            return <div key={idx} className="space-y-2"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center"><Icon className="w-5 h-5" /></div><div><div className="font-semibold">{factor.name}</div><div className="text-sm text-muted-foreground">Weight: {factor.weight}</div></div></div><div className="text-right"><div className="font-bold">{factor.score}/100</div></div></div><Progress value={factor.score} className="h-2" /><p className="text-sm text-muted-foreground">{factor.details}</p></div>;
+          })}
+        </div>
+      </Card>
+
+      <Card className="p-6 shadow-medium">
+        <h2 className="text-2xl font-bold mb-6">🛡️ Safer Alternatives</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {alternatives.map((alt: any, idx: number) => (
+            <Card key={idx} className="p-4"><div className="space-y-3"><div className="text-sm font-medium text-primary">{alt.platform}</div><h3 className="font-semibold">{alt.name}</h3><div className="text-lg font-bold">{alt.price}</div><p className="text-xs text-muted-foreground">{alt.reason}</p></div></Card>
           ))}
         </div>
       </Card>
 
-      {/* Safer Alternatives */}
-      <Card className="p-6 md:p-8 shadow-medium bg-success/5 border-success">
-        <div className="flex items-center gap-2 mb-6">
-          <CheckCircle className="w-6 h-6 text-success" />
-          <h3 className="text-xl font-bold">Safer Alternatives from Verified Vendors</h3>
-        </div>
-        <div className="space-y-4">
-          {alternatives.map((alt, index) => (
-            <Card key={index} className="p-4 hover:shadow-medium transition-shadow">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex-1">
-                  <h4 className="font-semibold mb-1">{alt.name}</h4>
-                  <p className="text-sm text-muted-foreground mb-2">{alt.vendor}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <Shield className="w-4 h-4 text-success" />
-                      <span className="text-sm font-medium text-success">
-                        {alt.trustScore}% Trust Score
-                      </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {alt.savings} more for authenticity
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-primary mb-2">
-                    {alt.price}
-                  </div>
-                  <Button size="sm" variant="default">
-                    View Product
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </Card>
-
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button variant="hero" size="lg" onClick={onNewScan}>
-          Scan Another Product
-        </Button>
-        <Button variant="outline" size="lg">
-          Save Report
-        </Button>
-      </div>
+      <div className="flex gap-4 justify-center"><Button onClick={onNewScan} size="lg">Scan Another Product</Button></div>
     </div>
   );
 };
