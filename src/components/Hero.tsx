@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Shield, Scan, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import heroImage from "@/assets/hero-shopping.jpg";
+import heroImage from "@/assets/hero-shopping-optimized.jpg";
 
 const Hero = () => {
   const navigate = useNavigate();
@@ -79,6 +79,8 @@ const Hero = () => {
               <img 
                 src={heroImage}
                 alt="Safe shopping with AI"
+                width={1280}
+                height={725}
                 className="w-full h-auto object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
