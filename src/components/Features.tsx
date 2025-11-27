@@ -1,8 +1,8 @@
 import { Shield, Zap, Award, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import iconScan from "@/assets/icon-scan.jpg";
-import iconAi from "@/assets/icon-ai.jpg";
-import iconTrust from "@/assets/icon-trust.jpg";
+import iconScan from "@/assets/icon-scan-optimized.jpg";
+import iconAi from "@/assets/icon-ai-optimized.jpg";
+import iconTrust from "@/assets/icon-trust-optimized.jpg";
 
 const Features = () => {
   const features = [
@@ -78,6 +78,8 @@ const Features = () => {
                 <img 
                   src={feature.icon} 
                   alt={feature.title}
+                  width={128}
+                  height={128}
                   className="w-16 h-16 rounded-lg object-cover"
                 />
               </div>
