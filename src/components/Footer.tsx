@@ -1,8 +1,6 @@
 import { Shield, Github, Mail } from "lucide-react";
-
 const Footer = () => {
-  return (
-    <footer className="bg-muted/30 border-t border-border py-12">
+  return <footer className="bg-muted/30 border-t border-border py-12">
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-4 gap-8">
           {/* Brand */}
@@ -20,18 +18,10 @@ const Footer = () => {
               Protecting 10M+ shoppers from scams, counterfeits, and risky vendors.
             </p>
             <div className="flex items-center gap-4">
-              <a 
-                href="https://github.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                 <Github className="w-5 h-5" />
               </a>
-              <a 
-                href="mailto:support@safebazaar.ai"
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
+              <a href="mailto:support@safebazaar.ai" className="text-muted-foreground hover:text-primary transition-colors">
                 <Mail className="w-5 h-5" />
               </a>
             </div>
@@ -67,11 +57,10 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>© 2025 Safe Bazaar AI. Built for AI Hackathon 2025 Kenya. Open Source Project.</p>
+          <p>© 2025 Safe Bazaar AI. Built for AI Hackathon 2025 Kenya. Open Source Project. 
+By J.Noel</p>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
-
 export default Footer;
