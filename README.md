@@ -1,73 +1,39 @@
-# Welcome to your Lovable project
+Safe Bazaar AIOverviewSafe Bazaar AI is an innovative AI-powered marketplace designed to facilitate secure, transparent, and efficient transactions, particularly for underserved communities in Kenya. It leverages artificial intelligence for fraud detection, personalized product recommendations, secure payment processing, and community-driven trust features. Built with modern web technologies, this project aims to empower local buyers and sellers by reducing risks in online trading and promoting economic inclusion.Key Features:AI Fraud Detection: Real-time analysis to identify and prevent fraudulent activities.
+Personalized Recommendations: Machine learning algorithms to suggest products based on user behavior.
+Secure Transactions: Integrated payment gateways with encryption and verification.
+User Profiles and Reviews: Community-based trust scores and feedback systems.
+Mobile-Friendly Interface: Responsive design for accessibility on various devices.
 
-## Project info
+This project is developed by Noel, inspired by the need for safer digital marketplaces in emerging economies. It's open for contributions, especially from Kenyan developers interested in AI and fintech.Project InfoURL: https://lovable.dev/projects/16b03f75-2077-45e0-ac63-ee8d6d36aa4d (Access the live demo or development environment here)GitHub Repository: [github.com/JustiNoel/safe-bazaar-ai] How Can I Edit This Code?There are several ways to edit and contribute to Safe Bazaar AI.Use LovableSimply visit the Lovable Project and start prompting or making changes directly in the platform.Changes made via Lovable will be committed automatically to this repo.Use Your Preferred IDEIf you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.The only requirement is having Node.js & npm installed - install with nvm.Follow these steps:sh
 
-**URL**: https://lovable.dev/projects/16b03f75-2077-45e0-ac63-ee8d6d36aa4d
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/16b03f75-2077-45e0-ac63-ee8d6d36aa4d) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
 # Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+git clone https://github.com/JustiNoel/safe-bazaar-ai.git
 
 # Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+cd safe-bazaar-ai
 
 # Step 3: Install the necessary dependencies.
 npm i
 
 # Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
-```
 
-**Edit a file directly in GitHub**
+Edit a File Directly in GitHubNavigate to the desired file(s) in the repository.
+Click the "Edit" button (pencil icon) at the top right of the file view.
+Make your changes and commit them.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Use GitHub CodespacesNavigate to the main page of your repository.
+Click on the "Code" button (green button) near the top right.
+Select the "Codespaces" tab.
+Click on "New codespace" to launch a new Codespace environment.
+Edit files directly within the Codespace and commit and push your changes once you're done.
 
-**Use GitHub Codespaces**
+What Technologies Are Used for This Project?This project is built with:Vite (for fast development and building)
+TypeScript (for type-safe JavaScript)
+React (for building user interfaces)
+shadcn-ui (for accessible and customizable UI components)
+Tailwind CSS (for utility-first styling)
+Additional libraries: Potentially integrating AI/ML tools like TensorFlow.js or similar for client-side AI features (expand as needed)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+How Can I Deploy This Project?Simply open Lovable and click on Share -> Publish to deploy to a production environment.For custom deployments, you can use platforms like Vercel, Netlify, or AWS by building the project with npm run build and uploading the output.Can I Connect a Custom Domain to My Lovable Project?Yes, you can!To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.Read more here: Setting up a custom domainContributingWe welcome contributions! If you're interested in improving Safe Bazaar AI, especially for Kenyan-specific features like integrating local payment systems (e.g., M-Pesa) or enhancing AI models for Swahili language support, please fork the repo and submit a pull request.For issues or suggestions, open a GitHub issue.LicenseThis project is licensed under the MIT License - see the LICENSE file for details.
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/16b03f75-2077-45e0-ac63-ee8d6d36aa4d) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
