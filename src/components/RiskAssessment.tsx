@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
+import CircularGauge from "@/components/CircularGauge";
 
 interface RiskAssessmentProps {
   onNewScan: () => void;
@@ -40,15 +41,37 @@ const RiskAssessment = ({ onNewScan, productImage, assessmentData }: RiskAssessm
       <div className="text-center"><h1 className="text-3xl md:text-4xl font-bold mb-2">Risk Assessment Results</h1><p className="text-muted-foreground">AI-powered analysis complete</p></div>
       
       <Card className="p-8 shadow-medium">
-        <div className="flex flex-col md:flex-row gap-8 items-center">
-          {productImage && <div className="w-full md:w-48 h-48 rounded-lg overflow-hidden border"><img src={productImage} alt="Product" className="w-full h-full object-cover" /></div>}
-          <div className="flex flex-col items-center">
-            <div className={`w-32 h-32 rounded-full flex items-center justify-center ${verdict === "safe" ? "bg-success/20" : verdict === "caution" ? "bg-warning/20" : "bg-destructive/20"}`}>
-              <div className="text-center"><div className={`text-4xl font-bold ${verdict === "safe" ? "text-success" : verdict === "caution" ? "text-warning" : "text-destructive"}`}>{overallScore}</div><div className="text-sm text-muted-foreground">/ 100</div></div>
+        <div className="flex flex-col md:flex-row gap-8 items-center justify-center">
+          {productImage && (
+            <div className="w-full md:w-48 h-48 rounded-lg overflow-hidden border">
+              <img src={productImage} alt="Product" className="w-full h-full object-cover" />
             </div>
-            <div className="mt-4 text-center">{verdict === "unsafe" ? <AlertCircle className="w-6 h-6 text-destructive" /> : <CheckCircle className="w-6 h-6 text-success" />}<div className="font-bold mt-2">{verdict === "safe" ? "Safe to Proceed" : verdict === "caution" ? "Proceed with Caution" : "Unsafe - Avoid"}</div></div>
+          )}
+          <div className="flex flex-col items-center">
+            <CircularGauge score={overallScore} size={180} strokeWidth={14} />
+            <div className="mt-4 text-center flex items-center gap-2">
+              {verdict === "unsafe" ? (
+                <AlertCircle className="w-5 h-5 text-destructive" />
+              ) : verdict === "caution" ? (
+                <AlertCircle className="w-5 h-5 text-warning" />
+              ) : (
+                <CheckCircle className="w-5 h-5 text-success" />
+              )}
+              <span className="font-bold">
+                {verdict === "safe" ? "Safe to Proceed" : verdict === "caution" ? "Proceed with Caution" : "Unsafe - Avoid"}
+              </span>
+            </div>
           </div>
-          <div className="flex-1"><h3 className="text-xl font-semibold mb-3">Assessment Summary</h3><p className="text-muted-foreground mb-4">{verdict === "safe" ? "Product passes safety checks" : "Review details carefully before purchasing"}</p></div>
+          <div className="flex-1 text-center md:text-left">
+            <h3 className="text-xl font-semibold mb-3">Assessment Summary</h3>
+            <p className="text-muted-foreground">
+              {verdict === "safe" 
+                ? "This product passes our safety checks. You can proceed with confidence!" 
+                : verdict === "caution"
+                ? "Review the risk factors below before making a purchase decision."
+                : "We recommend avoiding this product due to significant risk factors."}
+            </p>
+          </div>
         </div>
       </Card>
 
