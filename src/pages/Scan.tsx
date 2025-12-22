@@ -11,13 +11,16 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import RiskAssessment from "@/components/RiskAssessment";
 import PremiumUpgradeModal from "@/components/PremiumUpgradeModal";
+import ScanningAnimation from "@/components/ScanningAnimation";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useConfetti } from "@/hooks/useConfetti";
 
 const Scan = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { triggerConfetti, triggerSuccess } = useConfetti();
   const [imageUrl, setImageUrl] = useState<string>("");
   const [productUrl, setProductUrl] = useState<string>("");
   const [productInfo, setProductInfo] = useState({ name: "", vendor: "", price: "", platform: "" });
@@ -70,6 +73,16 @@ const Scan = () => {
       setShowResults(true);
       toast.success("Analysis complete!");
       
+      // Trigger confetti for safe products
+      const score = data.assessment?.overall_score || 0;
+      const verdict = data.assessment?.verdict || (score >= 70 ? "safe" : score >= 40 ? "caution" : "unsafe");
+      if (verdict === "safe") {
+        setTimeout(() => {
+          triggerConfetti();
+          triggerSuccess();
+        }, 300);
+      }
+      
       if (data.scansRemaining !== null && data.scansRemaining <= 2) {
         toast.warning(`Only ${data.scansRemaining} scans remaining today!`);
       }
@@ -92,6 +105,7 @@ const Scan = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-muted/20 to-background">
+      <ScanningAnimation isScanning={isAnalyzing} />
       <Navigation />
       
       <main className="flex-1 pt-24 pb-16">
