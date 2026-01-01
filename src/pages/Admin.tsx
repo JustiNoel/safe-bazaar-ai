@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
+import KenyaHeatmap from "@/components/KenyaHeatmap";
 
 interface DashboardStats {
   totalUsers: number;
@@ -352,11 +353,17 @@ export default function Admin() {
           </motion.div>
         </div>
 
+        {/* Kenya Heatmap */}
+        <div className="mb-8">
+          <KenyaHeatmap />
+        </div>
+
         {/* Tabs for detailed views */}
         <Tabs defaultValue="scans" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="scans">Recent Scans</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="regions">Regions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="scans">
