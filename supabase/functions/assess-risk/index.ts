@@ -7,6 +7,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Supported AI models
+const AI_MODELS = {
+  gemini: {
+    name: "google/gemini-2.5-flash",
+    endpoint: "https://ai.gateway.lovable.dev/v1/chat/completions",
+    useGateway: true,
+  },
+  grok: {
+    name: "grok-3",
+    endpoint: "https://api.x.ai/v1/chat/completions",
+    useGateway: false,
+  },
+};
+
 // Input validation schema
 const productInfoSchema = z.object({
   name: z.string().max(200).optional(),
@@ -18,6 +32,7 @@ const productInfoSchema = z.object({
 const requestSchema = z.object({
   imageUrl: z.string().url().max(2048).optional(),
   productInfo: productInfoSchema,
+  model: z.enum(["gemini", "grok"]).optional().default("gemini"),
 });
 
 serve(async (req) => {
@@ -40,11 +55,29 @@ serve(async (req) => {
       );
     }
     
-    const { imageUrl, productInfo } = validationResult.data;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const { imageUrl, productInfo, model: selectedModel } = validationResult.data;
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
+    // Get API keys
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
+    
+    // Determine which model to use
+    let modelConfig = AI_MODELS[selectedModel || "gemini"];
+    let apiKey = LOVABLE_API_KEY;
+    
+    // If Grok is selected but no API key, fall back to Gemini
+    if (selectedModel === "grok") {
+      if (XAI_API_KEY) {
+        apiKey = XAI_API_KEY;
+      } else {
+        console.log("XAI_API_KEY not configured, falling back to Gemini");
+        modelConfig = AI_MODELS.gemini;
+        apiKey = LOVABLE_API_KEY;
+      }
+    }
+    
+    if (!apiKey) {
+      throw new Error("No AI API key configured");
     }
 
     // Initialize Supabase client
@@ -102,20 +135,22 @@ Return a JSON response with:
 - safer_alternatives array with: name, platform, price, trust_score, reason`;
 
     const userPrompt = `Analyze this product:
-${productInfo ? `Product: ${productInfo}` : ''}
+${productInfo ? `Product: ${JSON.stringify(productInfo)}` : ''}
 Image URL: ${imageUrl || 'No image provided'}
 
 Consider Kenyan market context: counterfeit electronics, unverified M-Pesa transactions, high-risk vendor locations.`;
 
-    // Call Lovable AI
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    console.log(`Using AI model: ${modelConfig.name}`);
+
+    // Call AI API
+    const aiResponse = await fetch(modelConfig.endpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: modelConfig.name,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -126,7 +161,7 @@ Consider Kenyan market context: counterfeit electronics, unverified M-Pesa trans
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errorText);
+      console.error(`AI error (${modelConfig.name}):`, aiResponse.status, errorText);
       
       if (aiResponse.status === 429) {
         return new Response(
@@ -135,7 +170,14 @@ Consider Kenyan market context: counterfeit electronics, unverified M-Pesa trans
         );
       }
       
-      throw new Error("AI gateway error");
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Payment required. Please add credits." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      throw new Error(`AI gateway error: ${aiResponse.status}`);
     }
 
     const aiData = await aiResponse.json();
@@ -180,6 +222,7 @@ Consider Kenyan market context: counterfeit electronics, unverified M-Pesa trans
       JSON.stringify({
         success: true,
         assessment,
+        modelUsed: modelConfig.name,
         scansRemaining: userProfile && !userProfile.premium 
           ? userProfile.scan_limit - (userProfile.scans_today + 1)
           : null
