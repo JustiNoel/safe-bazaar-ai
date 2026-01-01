@@ -1,13 +1,29 @@
-import { Shield, Menu, X } from "lucide-react";
+import { Shield, Menu, X, History, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "./ThemeToggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
 
   return (
     <motion.nav 
@@ -49,12 +65,63 @@ const Navigation = () => {
             <Button variant="ghost" onClick={() => navigate("/scan")}>
               Scan Product
             </Button>
-            <ThemeToggle />
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button variant="hero" onClick={() => navigate("/scan")}>
-                Get Started
+            {isAuthenticated && (
+              <Button variant="ghost" onClick={() => navigate("/history")}>
+                <History className="h-4 w-4 mr-2" />
+                History
               </Button>
-            </motion.div>
+            )}
+            <ThemeToggle />
+            
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {user?.email?.charAt(0).toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    {user?.profile?.premium && (
+                      <Badge className="absolute -top-1 -right-1 h-5 px-1 text-[10px] bg-gradient-primary">
+                        PRO
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{user?.email}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {user?.profile?.role || "Buyer"} 
+                      {user?.profile?.premium && " • Premium"}
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/history")}>
+                    <History className="h-4 w-4 mr-2" />
+                    Scan History
+                  </DropdownMenuItem>
+                  {user?.profile?.role === "seller" && (
+                    <DropdownMenuItem onClick={() => navigate("/seller")}>
+                      <User className="h-4 w-4 mr-2" />
+                      Seller Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button variant="hero" onClick={() => navigate("/auth")}>
+                  Get Started
+                </Button>
+              </motion.div>
+            )}
           </div>
 
           {/* Mobile Menu Button & Theme Toggle */}
@@ -126,15 +193,55 @@ const Navigation = () => {
                 >
                   Scan Product
                 </Button>
-                <Button 
-                  variant="hero"
-                  onClick={() => {
-                    navigate("/scan");
-                    setIsOpen(false);
-                  }}
-                >
-                  Get Started
-                </Button>
+                {isAuthenticated && (
+                  <>
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start"
+                      onClick={() => {
+                        navigate("/history");
+                        setIsOpen(false);
+                      }}
+                    >
+                      <History className="h-4 w-4 mr-2" />
+                      Scan History
+                    </Button>
+                    {user?.profile?.role === "seller" && (
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start"
+                        onClick={() => {
+                          navigate("/seller");
+                          setIsOpen(false);
+                        }}
+                      >
+                        Seller Dashboard
+                      </Button>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start text-destructive"
+                      onClick={() => {
+                        handleLogout();
+                        setIsOpen(false);
+                      }}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </Button>
+                  </>
+                )}
+                {!isAuthenticated && (
+                  <Button 
+                    variant="hero"
+                    onClick={() => {
+                      navigate("/auth");
+                      setIsOpen(false);
+                    }}
+                  >
+                    Get Started
+                  </Button>
+                )}
               </motion.div>
             </motion.div>
           )}

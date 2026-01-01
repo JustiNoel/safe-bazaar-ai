@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Scan from "./pages/Scan";
 import Auth from "./pages/Auth";
 import SellerDashboard from "./pages/SellerDashboard";
+import ScanHistory from "./pages/ScanHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const AnimatedRoutes = () => {
           <Route path="/scan" element={<Scan />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/seller" element={<SellerDashboard />} />
+          <Route path="/history" element={<ScanHistory />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </motion.div>
