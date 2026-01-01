@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { Check, Zap, Shield, Crown, Loader2 } from "lucide-react";
+import { Check, Zap, Shield, Crown, Loader2, CreditCard, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import MpesaPaymentModal from "@/components/MpesaPaymentModal";
 
 const plans = [
   {
@@ -94,6 +95,11 @@ export default function Pricing() {
   const { isAuthenticated, subscription, createCheckout, openCustomerPortal } = useAuth();
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [mpesaModal, setMpesaModal] = useState<{ open: boolean; plan: 'premium' | 'premium_seller'; amount: number }>({
+    open: false,
+    plan: 'premium',
+    amount: 200,
+  });
 
   const handlePlanClick = async (planId: string) => {
     if (planId === "free") {
@@ -168,7 +174,7 @@ export default function Pricing() {
             that fits your needs. All plans include our AI-powered fraud detection.
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Pay with card via Stripe. M-Pesa and PayPal coming soon!
+            Pay with card via Stripe or M-Pesa mobile money.
           </p>
         </motion.div>
 
@@ -246,7 +252,7 @@ export default function Pricing() {
                     </ul>
                   </CardContent>
 
-                  <CardFooter className="relative pt-4">
+                  <CardFooter className="relative pt-4 flex-col gap-2">
                     <Button
                       className={`w-full ${
                         plan.popular
@@ -263,9 +269,32 @@ export default function Pricing() {
                           Processing...
                         </>
                       ) : (
-                        getButtonText(plan)
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          {getButtonText(plan)}
+                        </>
                       )}
                     </Button>
+                    {plan.id !== "free" && !current && (
+                      <Button
+                        variant="outline"
+                        className="w-full border-success/50 text-success hover:bg-success/10"
+                        onClick={() => {
+                          if (!isAuthenticated) {
+                            navigate("/auth");
+                            return;
+                          }
+                          setMpesaModal({
+                            open: true,
+                            plan: plan.id as 'premium' | 'premium_seller',
+                            amount: plan.id === 'premium' ? 200 : 500,
+                          });
+                        }}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Pay with M-Pesa
+                      </Button>
+                    )}
                   </CardFooter>
                 </Card>
               </motion.div>
@@ -280,9 +309,16 @@ export default function Pricing() {
           transition={{ delay: 0.5 }}
           className="text-center text-sm text-muted-foreground mt-8"
         >
-          All prices in Kenyan Shillings. Cancel anytime. Payments via Stripe (card).
+          All prices in Kenyan Shillings. Cancel anytime. Payments via Stripe (card) or M-Pesa.
         </motion.p>
       </div>
+
+      <MpesaPaymentModal
+        isOpen={mpesaModal.open}
+        onClose={() => setMpesaModal(prev => ({ ...prev, open: false }))}
+        plan={mpesaModal.plan}
+        amount={mpesaModal.amount}
+      />
     </section>
   );
 }
