@@ -1,11 +1,15 @@
 import { motion } from "framer-motion";
-import { Check, Zap, Shield, Crown } from "lucide-react";
+import { Check, Zap, Shield, Crown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const plans = [
   {
+    id: "free",
     name: "Free",
     price: "KES 0",
     period: "forever",
@@ -22,6 +26,7 @@ const plans = [
     gradient: "from-muted/50 to-muted",
   },
   {
+    id: "premium",
     name: "Premium",
     price: "KES 200",
     period: "/month",
@@ -42,6 +47,7 @@ const plans = [
     gradient: "from-primary/20 to-primary/5",
   },
   {
+    id: "premium_seller",
     name: "Premium Seller",
     price: "KES 500",
     period: "/month",
@@ -85,8 +91,64 @@ const cardVariants = {
 };
 
 export default function Pricing() {
+  const { isAuthenticated, subscription, createCheckout, openCustomerPortal } = useAuth();
+  const navigate = useNavigate();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  const handlePlanClick = async (planId: string) => {
+    if (planId === "free") {
+      if (!isAuthenticated) {
+        navigate("/auth");
+      } else {
+        navigate("/scan");
+      }
+      return;
+    }
+
+    if (!isAuthenticated) {
+      navigate("/auth");
+      return;
+    }
+
+    // If already subscribed to this plan, open portal
+    if (subscription?.subscribed && subscription.tier === planId) {
+      await openCustomerPortal();
+      return;
+    }
+
+    setLoadingPlan(planId);
+    try {
+      await createCheckout(planId as 'premium' | 'premium_seller');
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  const getButtonText = (plan: typeof plans[0]) => {
+    if (plan.id === "free") {
+      return isAuthenticated ? "Current Plan" : "Get Started";
+    }
+    
+    if (subscription?.subscribed && subscription.tier === plan.id) {
+      return "Manage Plan";
+    }
+    
+    if (subscription?.subscribed) {
+      return "Switch Plan";
+    }
+    
+    return plan.cta;
+  };
+
+  const isCurrentPlan = (planId: string) => {
+    if (planId === "free" && (!subscription?.subscribed || !subscription?.tier)) {
+      return isAuthenticated;
+    }
+    return subscription?.tier === planId;
+  };
+
   return (
-    <section className="py-20 px-4 bg-gradient-to-b from-background to-muted/30">
+    <section id="pricing" className="py-20 px-4 bg-gradient-to-b from-background to-muted/30">
       <div className="container mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -105,6 +167,9 @@ export default function Pricing() {
             Whether you're a casual shopper or a business seller, we have a plan
             that fits your needs. All plans include our AI-powered fraud detection.
           </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Pay with card via Stripe. M-Pesa and PayPal coming soon!
+          </p>
         </motion.div>
 
         <motion.div
@@ -116,6 +181,8 @@ export default function Pricing() {
         >
           {plans.map((plan) => {
             const Icon = plan.icon;
+            const current = isCurrentPlan(plan.id);
+            
             return (
               <motion.div key={plan.name} variants={cardVariants}>
                 <Card
@@ -123,12 +190,20 @@ export default function Pricing() {
                     plan.popular
                       ? "border-primary shadow-lg shadow-primary/20 scale-105 z-10"
                       : "border-border hover:border-primary/50"
-                  }`}
+                  } ${current ? "ring-2 ring-green-500" : ""}`}
                 >
                   {plan.popular && (
                     <div className="absolute top-0 right-0">
                       <div className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-bl-lg">
                         Most Popular
+                      </div>
+                    </div>
+                  )}
+
+                  {current && (
+                    <div className="absolute top-0 left-0">
+                      <div className="bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-br-lg">
+                        Your Plan
                       </div>
                     </div>
                   )}
@@ -179,8 +254,17 @@ export default function Pricing() {
                           : "bg-secondary hover:bg-secondary/80"
                       }`}
                       variant={plan.popular ? "default" : "secondary"}
+                      onClick={() => handlePlanClick(plan.id)}
+                      disabled={loadingPlan === plan.id || (plan.id === "free" && current)}
                     >
-                      {plan.cta}
+                      {loadingPlan === plan.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        getButtonText(plan)
+                      )}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -196,7 +280,7 @@ export default function Pricing() {
           transition={{ delay: 0.5 }}
           className="text-center text-sm text-muted-foreground mt-8"
         >
-          All prices in Kenyan Shillings. Cancel anytime. Payments via M-Pesa or card.
+          All prices in Kenyan Shillings. Cancel anytime. Payments via Stripe (card).
         </motion.p>
       </div>
     </section>

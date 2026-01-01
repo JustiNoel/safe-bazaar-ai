@@ -15,6 +15,12 @@ export interface UserProfile {
   scan_limit: number;
 }
 
+export interface SubscriptionStatus {
+  subscribed: boolean;
+  tier: 'premium' | 'premium_seller' | null;
+  subscription_end: string | null;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -26,11 +32,15 @@ interface AuthContextType {
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  subscription: SubscriptionStatus | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, phone: string, role: UserRole) => Promise<void>;
   logout: () => void;
   upgradeToPremium: () => void;
   refreshProfile: () => Promise<void>;
+  checkSubscription: () => Promise<void>;
+  createCheckout: (plan: 'premium' | 'premium_seller') => Promise<void>;
+  openCustomerPortal: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,6 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
 
   const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     const { data, error } = await supabase
@@ -61,6 +72,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return data as UserProfile;
   };
 
+  const checkSubscription = async () => {
+    if (!session) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      
+      if (error) {
+        console.error('Error checking subscription:', error);
+        return;
+      }
+      
+      setSubscription(data as SubscriptionStatus);
+      
+      // Refresh profile after subscription check
+      if (session.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (profile) {
+          setUser(prev => prev ? { ...prev, profile } : null);
+        }
+      }
+    } catch (error) {
+      console.error('Subscription check failed:', error);
+    }
+  };
+
   const refreshProfile = async () => {
     if (!session?.user) return;
     const profile = await fetchProfile(session.user.id);
@@ -75,22 +111,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
         setSession(currentSession);
         
         if (currentSession?.user) {
-          const profile = await fetchProfile(currentSession.user.id);
-          setUser({
-            id: currentSession.user.id,
-            email: currentSession.user.email!,
-            profile,
-          });
+          // Use setTimeout to prevent potential deadlock
+          setTimeout(async () => {
+            const profile = await fetchProfile(currentSession.user.id);
+            setUser({
+              id: currentSession.user.id,
+              email: currentSession.user.email!,
+              profile,
+            });
+            setIsLoading(false);
+          }, 0);
         } else {
           setUser(null);
+          setSubscription(null);
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
@@ -111,7 +151,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => authSubscription.unsubscribe();
+  }, []);
+
+  // Check subscription after session is established
+  useEffect(() => {
+    if (session) {
+      checkSubscription();
+    }
+  }, [session]);
+
+  // Check for success param in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      toast.success('🎉 Subscription activated! Welcome to Premium!');
+      checkSubscription();
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (urlParams.get('canceled') === 'true') {
+      toast.info('Checkout canceled. You can try again anytime.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -158,6 +219,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     setUser(null);
     setSession(null);
+    setSubscription(null);
     toast.success('Logged out successfully');
   };
 
@@ -178,17 +240,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     toast.success('🎉 Upgraded to Premium!');
   };
 
+  const createCheckout = async (plan: 'premium' | 'premium_seller') => {
+    if (!session) {
+      toast.error('Please log in to subscribe');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { plan }
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Failed to start checkout. Please try again.');
+    }
+  };
+
+  const openCustomerPortal = async () => {
+    if (!session) {
+      toast.error('Please log in to manage subscription');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast.error('Failed to open subscription portal.');
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
       session,
       isAuthenticated: !!session,
       isLoading,
+      subscription,
       login,
       signup,
       logout,
       upgradeToPremium,
       refreshProfile,
+      checkSubscription,
+      createCheckout,
+      openCustomerPortal,
     }}>
       {children}
     </AuthContext.Provider>
