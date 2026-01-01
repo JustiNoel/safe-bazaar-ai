@@ -37,3 +37,30 @@ Additional libraries: Potentially integrating AI/ML tools like TensorFlow.js or 
 
 How Can I Deploy This Project?Simply open Lovable and click on Share -> Publish to deploy to a production environment.For custom deployments, you can use platforms like Vercel, Netlify, or AWS by building the project with npm run build and uploading the output.Can I Connect a Custom Domain to My Lovable Project?Yes, you can!To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.Read more here: Setting up a custom domainContributingWe welcome contributions! If you're interested in improving Safe Bazaar AI, especially for Kenyan-specific features like integrating local payment systems (e.g., M-Pesa) or enhancing AI models for Swahili language support, please fork the repo and submit a pull request.For issues or suggestions, open a GitHub issue.LicenseThis project is licensed under the MIT License - see the LICENSE file for details.
 
+How Can I Deploy This Project?This project is built with:Vite (for fast development and building)
+TypeScript (for type-safe JavaScript)
+React (for building user interfaces)
+
+## Deploying the Backend (GitHub + GHCR)
+
+This repository includes a GitHub Actions workflow that builds and pushes the backend Docker image to GitHub Container Registry (GHCR) on pushes to `main`.
+
+What the workflow does:
+- Builds the Docker image from the `backend` folder.
+- Pushes `latest` and a commit-specific tag to `ghcr.io/${{ github.repository_owner }}/safe-bazaar-ai-backend`.
+
+Required repository secrets / permissions:
+- No extra secret is required if you use the default `GITHUB_TOKEN`, but you must ensure the token has `packages: write` permission for the workflow. The workflow sets that permission.
+
+How to trigger the workflow:
+1. Push code to the `main` branch.
+2. Go to the repository Actions tab and watch the `Build and Push Backend Docker Image` run.
+
+After the image is published, you can pull it with:
+
+```bash
+docker pull ghcr.io/<your-org-or-username>/safe-bazaar-ai-backend:latest
+```
+
+If you prefer using a personal access token (PAT) for other automation, create a token with `write:packages` scope and add it to the repository secrets as `GHCR_PAT`, then update the workflow to use that secret instead of `GITHUB_TOKEN`.
+
