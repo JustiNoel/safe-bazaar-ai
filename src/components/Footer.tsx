@@ -36,25 +36,47 @@ const Footer = () => {
           </div>
 
           {/* Quick Links */}
-          <div>
-            <h4 className="font-semibold mb-4">Quick Links</h4>
-            <ul className="space-y-2">
-              <li>
-                <a href="/#how-it-works" className="text-muted-foreground hover:text-primary transition-colors">
-                  How It Works
-                </a>
-              </li>
-              <li>
-                <a href="/scan" className="text-muted-foreground hover:text-primary transition-colors">
-                  Scan Product
-                </a>
-              </li>
-              <li>
-                <a href="/premium" className="text-muted-foreground hover:text-primary transition-colors">
-                  Premium Features
-                </a>
-              </li>
-            </ul>
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a href="/#how-it-works" className="text-muted-foreground hover:text-primary transition-colors">
+                    How It Works
+                  </a>
+                </li>
+                <li>
+                  <a href="/scan" className="text-muted-foreground hover:text-primary transition-colors">
+                    Scan Product
+                  </a>
+                </li>
+                <li>
+                  <a href="/premium" className="text-muted-foreground hover:text-primary transition-colors">
+                    Premium Features
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a href="/terms" className="text-muted-foreground hover:text-primary transition-colors">
+                    Terms of Service
+                  </a>
+                </li>
+                <li>
+                  <a href="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="/contact" className="text-muted-foreground hover:text-primary transition-colors">
+                    Contact Us
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 

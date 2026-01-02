@@ -12,7 +12,12 @@ import SellerDashboard from "./pages/SellerDashboard";
 import ScanHistory from "./pages/ScanHistory";
 import Admin from "./pages/Admin";
 import Premium from "./pages/Premium";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import WelcomeModal from "./components/WelcomeModal";
+import InstallPWA from "./components/InstallPWA";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +48,9 @@ const AnimatedRoutes = () => {
           <Route path="/history" element={<ScanHistory />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/premium" element={<Premium />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </motion.div>
@@ -57,6 +65,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <WelcomeModal />
+          <InstallPWA />
           <AnimatedRoutes />
         </BrowserRouter>
       </TooltipProvider>
