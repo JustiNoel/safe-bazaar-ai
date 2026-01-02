@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           authenticity_score: number | null
@@ -49,11 +76,15 @@ export type Database = {
       }
       profiles: {
         Row: {
+          banned: boolean
+          banned_at: string | null
+          banned_reason: string | null
           created_at: string
           id: string
           last_scan_reset: string | null
           phone: string | null
           premium: boolean
+          premium_expires_at: string | null
           role: Database["public"]["Enums"]["app_role"]
           scan_limit: number
           scans_today: number
@@ -61,11 +92,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          banned?: boolean
+          banned_at?: string | null
+          banned_reason?: string | null
           created_at?: string
           id?: string
           last_scan_reset?: string | null
           phone?: string | null
           premium?: boolean
+          premium_expires_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           scan_limit?: number
           scans_today?: number
@@ -73,11 +108,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          banned?: boolean
+          banned_at?: string | null
+          banned_reason?: string | null
           created_at?: string
           id?: string
           last_scan_reset?: string | null
           phone?: string | null
           premium?: boolean
+          premium_expires_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           scan_limit?: number
           scans_today?: number
