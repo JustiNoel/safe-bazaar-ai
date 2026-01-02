@@ -1,4 +1,4 @@
-import { Shield, Github, Mail, Heart } from "lucide-react";
+import { Shield, Github, Mail, Heart, Linkedin, Instagram } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -20,11 +20,17 @@ const Footer = () => {
               Protecting 10M+ shoppers from scams, counterfeits, and risky vendors.
             </p>
             <div className="flex items-center gap-4">
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="https://github.com/JustiNoel" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                 <Github className="w-5 h-5" />
               </a>
-              <a href="mailto:support@safebazaar.ai" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="mailto:justinoel254@gmail.com" className="text-muted-foreground hover:text-primary transition-colors">
                 <Mail className="w-5 h-5" />
+              </a>
+              <a href="https://www.linkedin.com/in/justin-noel-900253388" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                <Linkedin className="w-5 h-5" />
+              </a>
+              <a href="https://www.instagram.com/its_me_justinoel" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                <Instagram className="w-5 h-5" />
               </a>
             </div>
           </div>
