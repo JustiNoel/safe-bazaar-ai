@@ -11,6 +11,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import RiskAssessment from "@/components/RiskAssessment";
 import PremiumUpgradeModal from "@/components/PremiumUpgradeModal";
+import ScanLimitModal from "@/components/ScanLimitModal";
 import ScanningAnimation from "@/components/ScanningAnimation";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,8 +28,10 @@ const Scan = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showScanLimitModal, setShowScanLimitModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [assessmentData, setAssessmentData] = useState<any>(null);
+  const [scanStats, setScanStats] = useState({ scansUsed: 0, scanLimit: 3, nextResetTime: "12:00 AM EAT", isLimitReached: false });
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -61,10 +64,26 @@ const Scan = () => {
       });
 
       if (error) {
-        if (error.message.includes("Scan limit reached")) {
-          setShowUpgradeModal(true);
-          toast.error("Daily scan limit reached!");
-          return;
+        // Parse error response for limit reached
+        try {
+          const errorData = JSON.parse(error.message);
+          if (errorData.limitReached) {
+            setScanStats({
+              scansUsed: errorData.scansUsed,
+              scanLimit: errorData.scanLimit,
+              nextResetTime: errorData.nextResetTime || "12:00 AM EAT",
+              isLimitReached: true
+            });
+            setShowScanLimitModal(true);
+            return;
+          }
+        } catch {
+          // If parsing fails, check for scan limit message
+          if (error.message.includes("Scan limit reached")) {
+            setScanStats(prev => ({ ...prev, isLimitReached: true }));
+            setShowScanLimitModal(true);
+            return;
+          }
         }
         throw error;
       }
@@ -72,6 +91,18 @@ const Scan = () => {
       setAssessmentData(data.assessment);
       setShowResults(true);
       toast.success("Analysis complete!");
+      
+      // Update scan stats and show modal for non-premium users
+      if (!data.isPremium && data.scansUsed !== null) {
+        setScanStats({
+          scansUsed: data.scansUsed,
+          scanLimit: data.scanLimit,
+          nextResetTime: data.nextResetTime || "12:00 AM EAT",
+          isLimitReached: data.scansRemaining === 0
+        });
+        // Show the scan limit modal after each scan
+        setShowScanLimitModal(true);
+      }
       
       // Trigger confetti for safe products
       const score = data.assessment?.overall_score || 0;
@@ -81,10 +112,6 @@ const Scan = () => {
           triggerConfetti();
           triggerSuccess();
         }, 300);
-      }
-      
-      if (data.scansRemaining !== null && data.scansRemaining <= 2) {
-        toast.warning(`Only ${data.scansRemaining} scans remaining today!`);
       }
     } catch (error: any) {
       console.error("Analysis error:", error);
@@ -175,6 +202,14 @@ const Scan = () => {
 
       <Footer />
       <PremiumUpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+      <ScanLimitModal 
+        open={showScanLimitModal} 
+        onClose={() => setShowScanLimitModal(false)}
+        scansUsed={scanStats.scansUsed}
+        scansLimit={scanStats.scanLimit}
+        nextResetTime={scanStats.nextResetTime}
+        isLimitReached={scanStats.isLimitReached}
+      />
     </div>
   );
 };
