@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import CircularGauge from "@/components/CircularGauge";
+import ShareResults from "@/components/ShareResults";
 
 interface RiskAssessmentProps {
   onNewScan: () => void;
@@ -94,7 +95,10 @@ const RiskAssessment = ({ onNewScan, productImage, assessmentData }: RiskAssessm
         </div>
       </Card>
 
-      <div className="flex gap-4 justify-center"><Button onClick={onNewScan} size="lg">Scan Another Product</Button></div>
+      <div className="flex gap-4 justify-center flex-wrap">
+        <Button onClick={onNewScan} size="lg">Scan Another Product</Button>
+        <ShareResults score={overallScore} verdict={verdict} />
+      </div>
     </div>
   );
 };
