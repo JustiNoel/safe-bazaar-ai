@@ -35,6 +35,44 @@ const requestSchema = z.object({
   model: z.enum(["gemini", "grok"]).optional().default("gemini"),
 });
 
+// Helper function to get midnight EAT (East African Time = UTC+3)
+function getMidnightEAT(): Date {
+  const now = new Date();
+  // Get current time in EAT (UTC+3)
+  const eatOffset = 3 * 60; // 3 hours in minutes
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const eatTime = new Date(utcTime + (eatOffset * 60000));
+  
+  // Set to next midnight EAT
+  const nextMidnight = new Date(eatTime);
+  nextMidnight.setHours(24, 0, 0, 0);
+  
+  // Convert back to UTC for storage
+  const nextMidnightUTC = new Date(nextMidnight.getTime() - (eatOffset * 60000));
+  return nextMidnightUTC;
+}
+
+// Helper function to check if reset is needed (past midnight EAT)
+function shouldResetScans(lastReset: string | null): boolean {
+  if (!lastReset) return true;
+  
+  const lastResetDate = new Date(lastReset);
+  const now = new Date();
+  
+  // Get current time in EAT
+  const eatOffset = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+  const nowEAT = new Date(now.getTime() + eatOffset);
+  const lastResetEAT = new Date(lastResetDate.getTime() + eatOffset);
+  
+  // Check if it's a new day in EAT
+  return nowEAT.toDateString() !== lastResetEAT.toDateString();
+}
+
+// Helper function to get next reset time formatted for EAT
+function getNextResetTimeEAT(): string {
+  return "12:00 AM EAT";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -105,19 +143,51 @@ serve(async (req) => {
     }
 
     // Check scan limits for free users
+    let scansUsed = 0;
+    let scanLimit = 3;
+    const nextResetTime = getNextResetTimeEAT();
+    
     if (userProfile && !userProfile.premium) {
-      if (userProfile.scans_today >= userProfile.scan_limit) {
+      scanLimit = userProfile.scan_limit || 3;
+      
+      // Check if we need to reset scans (past midnight EAT)
+      if (shouldResetScans(userProfile.last_scan_reset)) {
+        console.log("Resetting daily scans - new day in EAT timezone");
+        await supabase
+          .from("profiles")
+          .update({ 
+            scans_today: 0, 
+            last_scan_reset: new Date().toISOString() 
+          })
+          .eq("user_id", userId);
+        scansUsed = 0;
+      } else {
+        scansUsed = userProfile.scans_today || 0;
+      }
+      
+      // Check if limit reached BEFORE performing scan
+      if (scansUsed >= scanLimit) {
         return new Response(
-          JSON.stringify({ error: "Scan limit reached. Upgrade to premium for unlimited scans!" }),
+          JSON.stringify({ 
+            error: "Scan limit reached. Upgrade to premium for unlimited scans!",
+            scansUsed: scansUsed,
+            scanLimit: scanLimit,
+            nextResetTime: nextResetTime,
+            limitReached: true
+          }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
       // Increment scan count
+      scansUsed += 1;
       await supabase
         .from("profiles")
-        .update({ scans_today: userProfile.scans_today + 1 })
+        .update({ scans_today: scansUsed })
         .eq("user_id", userId);
+    } else if (userProfile && userProfile.premium) {
+      // Premium users have unlimited scans
+      scanLimit = -1; // -1 means unlimited
     }
 
     // Prepare AI prompt for risk assessment
@@ -223,9 +293,11 @@ Consider Kenyan market context: counterfeit electronics, unverified M-Pesa trans
         success: true,
         assessment,
         modelUsed: modelConfig.name,
-        scansRemaining: userProfile && !userProfile.premium 
-          ? userProfile.scan_limit - (userProfile.scans_today + 1)
-          : null
+        scansUsed: userProfile && !userProfile.premium ? scansUsed : null,
+        scanLimit: userProfile && !userProfile.premium ? scanLimit : null,
+        scansRemaining: userProfile && !userProfile.premium ? scanLimit - scansUsed : null,
+        nextResetTime: userProfile && !userProfile.premium ? nextResetTime : null,
+        isPremium: userProfile?.premium || false
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
