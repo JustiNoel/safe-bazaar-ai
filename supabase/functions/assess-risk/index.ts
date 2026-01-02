@@ -32,7 +32,7 @@ const productInfoSchema = z.object({
 const requestSchema = z.object({
   imageUrl: z.string().url().max(2048).optional(),
   productInfo: productInfoSchema,
-  model: z.enum(["gemini", "grok"]).optional().default("gemini"),
+  model: z.enum(["gemini", "grok"]).optional().default("grok"),
 });
 
 // Helper function to get midnight EAT (East African Time = UTC+3)
@@ -99,19 +99,19 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
     
-    // Determine which model to use
-    let modelConfig = AI_MODELS[selectedModel || "gemini"];
-    let apiKey = LOVABLE_API_KEY;
+    // Determine which model to use - Default to Grok (xAI)
+    let modelConfig = AI_MODELS.grok;
+    let apiKey = XAI_API_KEY;
     
-    // If Grok is selected but no API key, fall back to Gemini
-    if (selectedModel === "grok") {
-      if (XAI_API_KEY) {
-        apiKey = XAI_API_KEY;
-      } else {
-        console.log("XAI_API_KEY not configured, falling back to Gemini");
-        modelConfig = AI_MODELS.gemini;
-        apiKey = LOVABLE_API_KEY;
-      }
+    // If xAI key not available, fall back to Gemini
+    if (!XAI_API_KEY) {
+      console.log("XAI_API_KEY not configured, falling back to Gemini");
+      modelConfig = AI_MODELS.gemini;
+      apiKey = LOVABLE_API_KEY;
+    } else if (selectedModel === "gemini") {
+      // Only use Gemini if explicitly requested
+      modelConfig = AI_MODELS.gemini;
+      apiKey = LOVABLE_API_KEY;
     }
     
     if (!apiKey) {
