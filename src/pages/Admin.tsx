@@ -10,7 +10,11 @@ import {
   Crown,
   BarChart3,
   RefreshCw,
-  ArrowLeft
+  ArrowLeft,
+  Ban,
+  RotateCcw,
+  Sparkles,
+  MoreHorizontal
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +28,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -54,7 +77,11 @@ interface UserRecord {
   role: string;
   premium: boolean;
   scans_today: number;
+  scan_limit: number;
   created_at: string;
+  banned: boolean;
+  banned_reason: string | null;
+  premium_expires_at: string | null;
 }
 
 export default function Admin() {
@@ -72,6 +99,14 @@ export default function Admin() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Dialog states
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+  const [banReason, setBanReason] = useState("");
+  const [premiumDays, setPremiumDays] = useState("30");
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -88,7 +123,6 @@ export default function Admin() {
     if (!user) return;
 
     try {
-      // Check if user has admin role
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
@@ -120,14 +154,12 @@ export default function Admin() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch all stats in parallel
       const [usersResult, scansResult, premiumResult] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact" }),
         supabase.from("scans").select("*", { count: "exact" }),
         supabase.from("profiles").select("*", { count: "exact" }).eq("premium", true),
       ]);
 
-      // Get today's scans
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const { count: scansToday } = await supabase
@@ -135,13 +167,11 @@ export default function Admin() {
         .select("*", { count: "exact", head: true })
         .gte("created_at", today.toISOString());
 
-      // Calculate high risk scans
       const { count: highRiskCount } = await supabase
         .from("scans")
         .select("*", { count: "exact", head: true })
         .lt("overall_score", 50);
 
-      // Calculate average score
       const allScans = scansResult.data || [];
       const avgScore = allScans.length > 0
         ? Math.round(allScans.reduce((sum, scan) => sum + (scan.overall_score || 0), 0) / allScans.length)
@@ -156,7 +186,6 @@ export default function Admin() {
         averageScore: avgScore,
       });
 
-      // Fetch recent scans
       const { data: recentScansData } = await supabase
         .from("scans")
         .select("*")
@@ -165,19 +194,179 @@ export default function Admin() {
 
       setRecentScans(recentScansData || []);
 
-      // Fetch users
       const { data: usersData } = await supabase
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(50);
 
-      setUsers(usersData || []);
+      setUsers((usersData as UserRecord[]) || []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBanUser = async () => {
+    if (!selectedUser || !user) return;
+    
+    setActionLoading(true);
+    try {
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          banned: true,
+          banned_at: new Date().toISOString(),
+          banned_reason: banReason || "No reason provided",
+        })
+        .eq("user_id", selectedUser.user_id);
+
+      if (updateError) throw updateError;
+
+      // Log admin action
+      await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "ban_user",
+        target_user_id: selectedUser.user_id,
+        details: { reason: banReason },
+      });
+
+      toast.success("User has been banned");
+      setBanDialogOpen(false);
+      setBanReason("");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error banning user:", error);
+      toast.error("Failed to ban user");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnbanUser = async (userRecord: UserRecord) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          banned: false,
+          banned_at: null,
+          banned_reason: null,
+        })
+        .eq("user_id", userRecord.user_id);
+
+      if (error) throw error;
+
+      await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "unban_user",
+        target_user_id: userRecord.user_id,
+        details: {},
+      });
+
+      toast.success("User has been unbanned");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error unbanning user:", error);
+      toast.error("Failed to unban user");
+    }
+  };
+
+  const handleResetScans = async (userRecord: UserRecord) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ scans_today: 0 })
+        .eq("user_id", userRecord.user_id);
+
+      if (error) throw error;
+
+      await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "reset_scans",
+        target_user_id: userRecord.user_id,
+        details: {},
+      });
+
+      toast.success("User's daily scans have been reset");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error resetting scans:", error);
+      toast.error("Failed to reset scans");
+    }
+  };
+
+  const handleUpgradePremium = async () => {
+    if (!selectedUser || !user) return;
+    
+    setActionLoading(true);
+    try {
+      const days = parseInt(premiumDays) || 30;
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + days);
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          premium: true,
+          scan_limit: 999,
+          premium_expires_at: expiresAt.toISOString(),
+        })
+        .eq("user_id", selectedUser.user_id);
+
+      if (error) throw error;
+
+      await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "upgrade_premium",
+        target_user_id: selectedUser.user_id,
+        details: { days, expires_at: expiresAt.toISOString() },
+      });
+
+      toast.success(`User upgraded to Premium for ${days} days`);
+      setPremiumDialogOpen(false);
+      setPremiumDays("30");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error upgrading user:", error);
+      toast.error("Failed to upgrade user");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRevokePremium = async (userRecord: UserRecord) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          premium: false,
+          scan_limit: 3,
+          premium_expires_at: null,
+        })
+        .eq("user_id", userRecord.user_id);
+
+      if (error) throw error;
+
+      await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "revoke_premium",
+        target_user_id: userRecord.user_id,
+        details: {},
+      });
+
+      toast.success("Premium status has been revoked");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error revoking premium:", error);
+      toast.error("Failed to revoke premium");
     }
   };
 
@@ -429,9 +618,9 @@ export default function Admin() {
           <TabsContent value="users">
             <Card>
               <CardHeader>
-                <CardTitle>Users</CardTitle>
+                <CardTitle>User Management</CardTitle>
                 <CardDescription>
-                  Registered users and their subscription status
+                  Manage users, subscriptions, and access control
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -440,14 +629,15 @@ export default function Admin() {
                     <TableRow>
                       <TableHead>User ID</TableHead>
                       <TableHead>Role</TableHead>
-                      <TableHead>Premium</TableHead>
-                      <TableHead>Scans Today</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Scans</TableHead>
                       <TableHead>Joined</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {users.map((userRecord) => (
-                      <TableRow key={userRecord.id}>
+                      <TableRow key={userRecord.id} className={userRecord.banned ? "opacity-60" : ""}>
                         <TableCell className="font-mono text-xs">
                           {userRecord.user_id.slice(0, 8)}...
                         </TableCell>
@@ -457,22 +647,92 @@ export default function Admin() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {userRecord.premium ? (
-                            <Badge className="bg-accent text-accent-foreground">
-                              <Crown className="h-3 w-3 mr-1" />
-                              Premium
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Free</Badge>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {userRecord.banned ? (
+                              <Badge variant="destructive" className="w-fit">
+                                <Ban className="h-3 w-3 mr-1" />
+                                Banned
+                              </Badge>
+                            ) : userRecord.premium ? (
+                              <Badge className="bg-accent text-accent-foreground w-fit">
+                                <Crown className="h-3 w-3 mr-1" />
+                                Premium
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="w-fit">Free</Badge>
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell>{userRecord.scans_today}</TableCell>
+                        <TableCell>
+                          <span className="text-sm">
+                            {userRecord.scans_today} / {userRecord.scan_limit === 999 ? '∞' : userRecord.scan_limit}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           {new Date(userRecord.created_at).toLocaleDateString('en-KE', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
                           })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleResetScans(userRecord)}
+                              >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Reset Daily Scans
+                              </DropdownMenuItem>
+                              {userRecord.premium ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleRevokePremium(userRecord)}
+                                  className="text-destructive"
+                                >
+                                  <Crown className="h-4 w-4 mr-2" />
+                                  Revoke Premium
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedUser(userRecord);
+                                    setPremiumDialogOpen(true);
+                                  }}
+                                >
+                                  <Sparkles className="h-4 w-4 mr-2" />
+                                  Upgrade to Premium
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              {userRecord.banned ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleUnbanUser(userRecord)}
+                                  className="text-success"
+                                >
+                                  <Shield className="h-4 w-4 mr-2" />
+                                  Unban User
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedUser(userRecord);
+                                    setBanDialogOpen(true);
+                                  }}
+                                  className="text-destructive"
+                                >
+                                  <Ban className="h-4 w-4 mr-2" />
+                                  Ban User
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -481,8 +741,95 @@ export default function Admin() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="regions">
+            <Card>
+              <CardHeader>
+                <CardTitle>Regional Statistics</CardTitle>
+                <CardDescription>
+                  Detailed breakdown of scam reports by region
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Click on regions in the heatmap above to view detailed statistics.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </main>
+
+      {/* Ban User Dialog */}
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ban User</DialogTitle>
+            <DialogDescription>
+              This will prevent the user from accessing the platform. You can unban them later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="ban-reason">Reason for ban</Label>
+              <Textarea
+                id="ban-reason"
+                placeholder="Enter the reason for banning this user..."
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleBanUser}
+              disabled={actionLoading}
+            >
+              {actionLoading ? "Banning..." : "Ban User"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upgrade Premium Dialog */}
+      <Dialog open={premiumDialogOpen} onOpenChange={setPremiumDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upgrade to Premium</DialogTitle>
+            <DialogDescription>
+              Manually grant premium access to this user for a specified duration.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="premium-days">Duration (days)</Label>
+              <Input
+                id="premium-days"
+                type="number"
+                min="1"
+                max="365"
+                value={premiumDays}
+                onChange={(e) => setPremiumDays(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPremiumDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpgradePremium}
+              disabled={actionLoading}
+            >
+              {actionLoading ? "Upgrading..." : "Upgrade to Premium"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
