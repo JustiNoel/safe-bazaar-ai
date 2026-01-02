@@ -4,6 +4,7 @@ import Features from "@/components/Features";
 import Testimonials from "@/components/Testimonials";
 import Pricing from "@/components/Pricing";
 import FAQ from "@/components/FAQ";
+import CommunitySection from "@/components/CommunitySection";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -15,6 +16,7 @@ const Index = () => {
       <Pricing />
       <FAQ />
       <Testimonials />
+      <CommunitySection />
       <Footer />
     </div>
   );

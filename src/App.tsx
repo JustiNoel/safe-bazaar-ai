@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import SellerDashboard from "./pages/SellerDashboard";
 import ScanHistory from "./pages/ScanHistory";
 import Admin from "./pages/Admin";
+import Premium from "./pages/Premium";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const AnimatedRoutes = () => {
           <Route path="/seller" element={<SellerDashboard />} />
           <Route path="/history" element={<ScanHistory />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/premium" element={<Premium />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </motion.div>

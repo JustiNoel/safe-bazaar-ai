@@ -1,8 +1,10 @@
-import { Shield, Github, Mail } from "lucide-react";
+import { Shield, Github, Mail, Heart } from "lucide-react";
+
 const Footer = () => {
-  return <footer className="bg-muted/30 border-t border-border py-12">
+  return (
+    <footer className="bg-muted/30 border-t border-border py-12">
       <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-3 gap-8">
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
@@ -41,26 +43,23 @@ const Footer = () => {
                   Scan Product
                 </a>
               </li>
-            </ul>
-          </div>
-
-          {/* Info */}
-          <div>
-            <h4 className="font-semibold mb-4">Project Info</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>AI Hackathon 2025</li>
-              <li>Kenya Edition</li>
-              <li>Theme: AI for National Prosperity</li>
-              <li>Focus: Cybersecurity & Data Protection</li>
+              <li>
+                <a href="/premium" className="text-muted-foreground hover:text-primary transition-colors">
+                  Premium Features
+                </a>
+              </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>© 2025 Safe Bazaar AI. Built for AI Hackathon 2025 Kenya. Open Source Project. 
-By J.Noel</p>
+          <p className="flex items-center justify-center gap-1">
+            © 2026 Safe Bazaar AI. Built with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> for you by J.Noel
+          </p>
         </div>
       </div>
-    </footer>;
+    </footer>
+  );
 };
+
 export default Footer;
