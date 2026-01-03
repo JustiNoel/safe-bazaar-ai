@@ -1,7 +1,7 @@
 import { Shield, Menu, X, History, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, memo, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "./ThemeToggle";
@@ -15,15 +15,17 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
-const Navigation = () => {
+const Navigation = memo(() => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logout();
     navigate("/");
-  };
+  }, [logout, navigate]);
+
+  const closeMenu = useCallback(() => setIsOpen(false), []);
 
   return (
     <motion.nav 
@@ -55,20 +57,21 @@ const Navigation = () => {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-6">
-            <motion.a 
-              href="/#how-it-works" 
+            <Link 
+              to="/#how-it-works" 
               className="text-foreground hover:text-primary transition-colors"
-              whileHover={{ y: -2 }}
             >
               How It Works
-            </motion.a>
-            <Button variant="ghost" onClick={() => navigate("/scan")}>
-              Scan Product
+            </Link>
+            <Button variant="ghost" asChild>
+              <Link to="/scan">Scan Product</Link>
             </Button>
             {isAuthenticated && (
-              <Button variant="ghost" onClick={() => navigate("/history")}>
-                <History className="h-4 w-4 mr-2" />
-                History
+              <Button variant="ghost" asChild>
+                <Link to="/history">
+                  <History className="h-4 w-4 mr-2" />
+                  History
+                </Link>
               </Button>
             )}
             <ThemeToggle />
@@ -98,14 +101,18 @@ const Navigation = () => {
                     </p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/history")}>
-                    <History className="h-4 w-4 mr-2" />
-                    Scan History
+                  <DropdownMenuItem asChild>
+                    <Link to="/history">
+                      <History className="h-4 w-4 mr-2" />
+                      Scan History
+                    </Link>
                   </DropdownMenuItem>
                   {user?.profile?.role === "seller" && (
-                    <DropdownMenuItem onClick={() => navigate("/seller")}>
-                      <User className="h-4 w-4 mr-2" />
-                      Seller Dashboard
+                    <DropdownMenuItem asChild>
+                      <Link to="/seller">
+                        <User className="h-4 w-4 mr-2" />
+                        Seller Dashboard
+                      </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
@@ -116,11 +123,9 @@ const Navigation = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button variant="hero" onClick={() => navigate("/auth")}>
-                  Get Started
-                </Button>
-              </motion.div>
+              <Button variant="hero" asChild>
+                <Link to="/auth">Get Started</Link>
+              </Button>
             )}
           </div>
 
@@ -176,46 +181,31 @@ const Navigation = () => {
                 animate={{ y: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                <a 
-                  href="/#how-it-works" 
+                <Link 
+                  to="/#how-it-works" 
                   className="text-foreground hover:text-primary transition-colors py-2"
-                  onClick={() => setIsOpen(false)}
+                  onClick={closeMenu}
                 >
                   How It Works
-                </a>
-                <Button 
-                  variant="ghost" 
-                  className="justify-start"
-                  onClick={() => {
-                    navigate("/scan");
-                    setIsOpen(false);
-                  }}
-                >
-                  Scan Product
+                </Link>
+                <Button variant="ghost" className="justify-start" asChild>
+                  <Link to="/scan" onClick={closeMenu}>
+                    Scan Product
+                  </Link>
                 </Button>
                 {isAuthenticated && (
                   <>
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start"
-                      onClick={() => {
-                        navigate("/history");
-                        setIsOpen(false);
-                      }}
-                    >
-                      <History className="h-4 w-4 mr-2" />
-                      Scan History
+                    <Button variant="ghost" className="justify-start" asChild>
+                      <Link to="/history" onClick={closeMenu}>
+                        <History className="h-4 w-4 mr-2" />
+                        Scan History
+                      </Link>
                     </Button>
                     {user?.profile?.role === "seller" && (
-                      <Button 
-                        variant="ghost" 
-                        className="justify-start"
-                        onClick={() => {
-                          navigate("/seller");
-                          setIsOpen(false);
-                        }}
-                      >
-                        Seller Dashboard
+                      <Button variant="ghost" className="justify-start" asChild>
+                        <Link to="/seller" onClick={closeMenu}>
+                          Seller Dashboard
+                        </Link>
                       </Button>
                     )}
                     <Button 
@@ -223,7 +213,7 @@ const Navigation = () => {
                       className="justify-start text-destructive"
                       onClick={() => {
                         handleLogout();
-                        setIsOpen(false);
+                        closeMenu();
                       }}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
@@ -232,14 +222,10 @@ const Navigation = () => {
                   </>
                 )}
                 {!isAuthenticated && (
-                  <Button 
-                    variant="hero"
-                    onClick={() => {
-                      navigate("/auth");
-                      setIsOpen(false);
-                    }}
-                  >
-                    Get Started
+                  <Button variant="hero" asChild>
+                    <Link to="/auth" onClick={closeMenu}>
+                      Get Started
+                    </Link>
                   </Button>
                 )}
               </motion.div>
@@ -249,6 +235,8 @@ const Navigation = () => {
       </div>
     </motion.nav>
   );
-};
+});
+
+Navigation.displayName = "Navigation";
 
 export default Navigation;

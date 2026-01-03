@@ -52,6 +52,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
 import KenyaHeatmap from "@/components/KenyaHeatmap";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 
 interface DashboardStats {
   totalUsers: number;
@@ -186,11 +187,16 @@ export default function Admin() {
         averageScore: avgScore,
       });
 
+      // Fetch more scans for analytics (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
       const { data: recentScansData } = await supabase
         .from("scans")
         .select("*")
+        .gte("created_at", thirtyDaysAgo.toISOString())
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(500);
 
       setRecentScans(recentScansData || []);
 
@@ -548,12 +554,17 @@ export default function Admin() {
         </div>
 
         {/* Tabs for detailed views */}
-        <Tabs defaultValue="scans" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+        <Tabs defaultValue="analytics" className="space-y-6">
+          <TabsList className="grid w-full max-w-lg grid-cols-4">
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="scans">Recent Scans</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="regions">Regions</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="analytics">
+            <AnalyticsDashboard scans={recentScans} />
+          </TabsContent>
 
           <TabsContent value="scans">
             <Card>
