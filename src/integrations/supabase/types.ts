@@ -79,12 +79,17 @@ export type Database = {
           banned: boolean
           banned_at: string | null
           banned_reason: string | null
+          bonus_scans: number
           created_at: string
+          email_preferences: Json | null
           id: string
           last_scan_reset: string | null
           phone: string | null
           premium: boolean
           premium_expires_at: string | null
+          referral_code: string | null
+          referral_count: number
+          referred_by: string | null
           role: Database["public"]["Enums"]["app_role"]
           scan_limit: number
           scans_today: number
@@ -95,12 +100,17 @@ export type Database = {
           banned?: boolean
           banned_at?: string | null
           banned_reason?: string | null
+          bonus_scans?: number
           created_at?: string
+          email_preferences?: Json | null
           id?: string
           last_scan_reset?: string | null
           phone?: string | null
           premium?: boolean
           premium_expires_at?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           scan_limit?: number
           scans_today?: number
@@ -111,19 +121,77 @@ export type Database = {
           banned?: boolean
           banned_at?: string | null
           banned_reason?: string | null
+          bonus_scans?: number
           created_at?: string
+          email_preferences?: Json | null
           id?: string
           last_scan_reset?: string | null
           phone?: string | null
           premium?: boolean
           premium_expires_at?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           scan_limit?: number
           scans_today?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          bonus_awarded: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          referred_id: string
+          referrer_id: string
+          status: string
+        }
+        Insert: {
+          bonus_awarded?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          referred_id: string
+          referrer_id: string
+          status?: string
+        }
+        Update: {
+          bonus_awarded?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       scans: {
         Row: {
