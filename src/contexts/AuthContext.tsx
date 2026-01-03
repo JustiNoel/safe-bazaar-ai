@@ -189,7 +189,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (email: string, password: string, phone: string, role: UserRole) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    // Check for referral code in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const referralCode = urlParams.get('ref');
+    
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -197,6 +201,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         data: {
           phone,
           role,
+          referral_code: referralCode,
         }
       }
     });
@@ -204,6 +209,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       toast.error(error.message);
       throw error;
+    }
+    
+    // Send welcome email
+    try {
+      await supabase.functions.invoke('send-welcome-email', {
+        body: { email, referralCode }
+      });
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+    
+    // Process referral if code exists
+    if (referralCode && data.user) {
+      try {
+        await supabase.functions.invoke('process-referral', {
+          body: { referredUserId: data.user.id, referralCode }
+        });
+      } catch (referralError) {
+        console.error('Failed to process referral:', referralError);
+      }
     }
     
     toast.success('Account created! Karibu tena!');
