@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { History, Shield, AlertTriangle, XCircle, Calendar, ChevronRight, Loader2 } from "lucide-react";
+import { History, Shield, AlertTriangle, XCircle, Calendar, ChevronRight, Loader2, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import NotificationPreferences from "@/components/NotificationPreferences";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 
 interface ScanRecord {
@@ -137,129 +139,148 @@ export default function ScanHistory() {
               <div className="p-2 rounded-lg bg-primary/10">
                 <History className="h-6 w-6 text-primary" />
               </div>
-              <h1 className="text-3xl font-bold">Scan History</h1>
+              <h1 className="text-3xl font-bold">Account</h1>
             </div>
             <p className="text-muted-foreground">
-              View all your previous product scans and their risk assessments
+              Manage your scan history and notification preferences
             </p>
           </motion.div>
 
-          {/* Premium Benefits Banner */}
-          {user?.profile && !user.profile.premium && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mb-6"
-            >
-              <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
-                <CardContent className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="font-medium">Upgrade to Premium</p>
-                    <p className="text-sm text-muted-foreground">
-                      Get unlimited scans, full breakdowns, and more!
-                    </p>
-                  </div>
-                  <Button onClick={() => navigate("/#pricing")}>
-                    View Plans
+          <Tabs defaultValue="history" className="mb-8">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="history" className="flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Scan History
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Settings
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="settings" className="mt-6">
+              <NotificationPreferences />
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-6">
+              {/* Premium Benefits Banner */}
+              {user?.profile && !user.profile.premium && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mb-6"
+                >
+                  <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div>
+                        <p className="font-medium">Upgrade to Premium</p>
+                        <p className="text-sm text-muted-foreground">
+                          Get unlimited scans, full breakdowns, and more!
+                        </p>
+                      </div>
+                      <Button onClick={() => navigate("/#pricing")}>
+                        View Plans
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : scans.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-16"
+                >
+                  <History className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                  <h2 className="text-xl font-semibold mb-2">No scans yet</h2>
+                  <p className="text-muted-foreground mb-6">
+                    Start scanning products to see your history here
+                  </p>
+                  <Button onClick={() => navigate("/scan")}>
+                    Scan Your First Product
                   </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="space-y-4"
+                >
+                  {scans.map((scan) => {
+                    const config = getVerdictConfig(scan.verdict);
+                    const VerdictIcon = config.icon;
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : scans.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-16"
-            >
-              <History className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">No scans yet</h2>
-              <p className="text-muted-foreground mb-6">
-                Start scanning products to see your history here
-              </p>
-              <Button onClick={() => navigate("/scan")}>
-                Scan Your First Product
-              </Button>
-            </motion.div>
-          ) : (
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="space-y-4"
-            >
-              {scans.map((scan) => {
-                const config = getVerdictConfig(scan.verdict);
-                const VerdictIcon = config.icon;
-
-                return (
-                  <motion.div key={scan.id} variants={itemVariants}>
-                    <Card className={`overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 border ${config.borderColor}`}>
-                      <CardContent className="p-0">
-                        <div className="flex items-stretch">
-                          {/* Image */}
-                          <div className="w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 bg-muted">
-                            {scan.products?.image_url ? (
-                              <img
-                                src={scan.products.image_url}
-                                alt={scan.products.product_name || "Product"}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Shield className="h-8 w-8 text-muted-foreground/50" />
+                    return (
+                      <motion.div key={scan.id} variants={itemVariants}>
+                        <Card className={`overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 border ${config.borderColor}`}>
+                          <CardContent className="p-0">
+                            <div className="flex items-stretch">
+                              {/* Image */}
+                              <div className="w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 bg-muted">
+                                {scan.products?.image_url ? (
+                                  <img
+                                    src={scan.products.image_url}
+                                    alt={scan.products.product_name || "Product"}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Shield className="h-8 w-8 text-muted-foreground/50" />
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
 
-                          {/* Content */}
-                          <div className="flex-1 p-4 flex flex-col justify-between">
-                            <div>
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <h3 className="font-semibold line-clamp-1">
-                                  {scan.products?.product_name || "Scanned Product"}
-                                </h3>
-                                <Badge className={`${config.bgColor} ${config.color} border-0 flex-shrink-0`}>
-                                  <VerdictIcon className="h-3 w-3 mr-1" />
-                                  {config.label}
-                                </Badge>
+                              {/* Content */}
+                              <div className="flex-1 p-4 flex flex-col justify-between">
+                                <div>
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <h3 className="font-semibold line-clamp-1">
+                                      {scan.products?.product_name || "Scanned Product"}
+                                    </h3>
+                                    <Badge className={`${config.bgColor} ${config.color} border-0 flex-shrink-0`}>
+                                      <VerdictIcon className="h-3 w-3 mr-1" />
+                                      {config.label}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground line-clamp-1">
+                                    {scan.products?.vendor_name || "Unknown vendor"} 
+                                    {scan.products?.source_platform && ` • ${scan.products.source_platform}`}
+                                  </p>
+                                </div>
+                                
+                                <div className="flex items-center justify-between mt-2">
+                                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                    <span className="font-medium text-foreground">
+                                      Score: {scan.overall_score}/100
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="h-3.5 w-3.5" />
+                                      {format(new Date(scan.created_at), "MMM d, yyyy")}
+                                    </span>
+                                  </div>
+                                  {scan.products?.price && (
+                                    <span className="text-sm font-medium">
+                                      KES {scan.products.price.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-sm text-muted-foreground line-clamp-1">
-                                {scan.products?.vendor_name || "Unknown vendor"} 
-                                {scan.products?.source_platform && ` • ${scan.products.source_platform}`}
-                              </p>
                             </div>
-                            
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <span className="font-medium text-foreground">
-                                  Score: {scan.overall_score}/100
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3.5 w-3.5" />
-                                  {format(new Date(scan.created_at), "MMM d, yyyy")}
-                                </span>
-                              </div>
-                              {scan.products?.price && (
-                                <span className="text-sm font-medium">
-                                  KES {scan.products.price.toLocaleString()}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-          )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 

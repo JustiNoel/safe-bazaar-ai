@@ -12,6 +12,10 @@ interface LimitNotificationRequest {
   scansUsed: number;
   scanLimit: number;
   nextResetTime: string;
+  preferences?: {
+    limit_alerts_email?: boolean;
+    limit_alerts_sms?: boolean;
+  };
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -20,14 +24,31 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, phone, scansUsed, scanLimit, nextResetTime }: LimitNotificationRequest = await req.json();
-    console.log("[LIMIT-NOTIFICATION] Sending to:", email, phone);
+    const { email, phone, scansUsed, scanLimit, nextResetTime, preferences }: LimitNotificationRequest = await req.json();
+    console.log("[LIMIT-NOTIFICATION] Sending to:", email, phone, "Preferences:", preferences);
 
-    const results: { email?: boolean; sms?: boolean } = {};
+    const results: { email?: boolean; sms?: boolean; skipped?: string[] } = {};
+    const skipped: string[] = [];
 
-    // Send Email via Resend
+    // Check if user has opted out of email alerts
+    const sendEmail = preferences?.limit_alerts_email !== false;
+    const sendSms = preferences?.limit_alerts_sms !== false;
+
+    if (!sendEmail) {
+      skipped.push("email");
+      console.log("[LIMIT-NOTIFICATION] Email skipped - user opted out");
+    }
+
+    if (!sendSms) {
+      skipped.push("sms");
+      console.log("[LIMIT-NOTIFICATION] SMS skipped - user opted out");
+    }
+
+    results.skipped = skipped;
+
+    // Send Email via Resend (only if user hasn't opted out)
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (RESEND_API_KEY && email) {
+    if (RESEND_API_KEY && email && sendEmail) {
       try {
         const resend = new Resend(RESEND_API_KEY);
         
@@ -129,11 +150,11 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Send SMS via Africa's Talking
+    // Send SMS via Africa's Talking (only if user hasn't opted out)
     const AT_API_KEY = Deno.env.get("AFRICASTALKING_API_KEY");
     const AT_USERNAME = Deno.env.get("AFRICASTALKING_USERNAME");
     
-    if (AT_API_KEY && AT_USERNAME && phone) {
+    if (AT_API_KEY && AT_USERNAME && phone && sendSms) {
       try {
         // Format phone number for Kenya (ensure it starts with +254)
         let formattedPhone = phone.trim();
