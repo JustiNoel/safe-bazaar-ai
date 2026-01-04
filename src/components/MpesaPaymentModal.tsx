@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, Loader2, CheckCircle, X, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface MpesaPaymentModalProps {
@@ -32,6 +33,49 @@ export default function MpesaPaymentModal({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [status, setStatus] = useState<PaymentStatus>("idle");
   const [error, setError] = useState("");
+  const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
+  const { checkMpesaPayment, refreshProfile } = useAuth();
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Poll for payment status
+  useEffect(() => {
+    if (status === "waiting" && checkoutRequestId) {
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const result = await checkMpesaPayment(checkoutRequestId);
+          
+          if (result?.transaction?.status === "completed") {
+            setStatus("success");
+            toast.success("🎉 Payment successful! Welcome to Premium!");
+            await refreshProfile();
+            
+            // Stop polling and close modal after showing success
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+            }
+            setTimeout(() => {
+              handleClose();
+              window.location.reload(); // Refresh to update all premium features
+            }, 2000);
+          } else if (result?.transaction?.status === "failed" || result?.transaction?.status === "cancelled") {
+            setStatus("error");
+            setError(result?.transaction?.resultDesc || "Payment failed or was cancelled");
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+            }
+          }
+        } catch (err) {
+          console.error("Error polling payment status:", err);
+        }
+      }, 3000); // Poll every 3 seconds
+    }
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [status, checkoutRequestId, checkMpesaPayment, refreshProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,15 +104,8 @@ export default function MpesaPaymentModal({
 
       if (data?.success) {
         setStatus("waiting");
+        setCheckoutRequestId(data.checkoutRequestId);
         toast.success("Check your phone for the M-Pesa prompt!");
-        
-        // Auto-close after 30 seconds
-        setTimeout(() => {
-          if (status === "waiting") {
-            onClose();
-            setStatus("idle");
-          }
-        }, 30000);
       } else {
         throw new Error(data?.error || "Failed to initiate payment");
       }
@@ -81,9 +118,13 @@ export default function MpesaPaymentModal({
   };
 
   const handleClose = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
     setStatus("idle");
     setPhoneNumber("");
     setError("");
+    setCheckoutRequestId(null);
     onClose();
   };
 
@@ -118,7 +159,7 @@ export default function MpesaPaymentModal({
                   KES {amount.toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {plan === "premium" ? "Premium Plan - Monthly" : "Premium Seller - Monthly"}
+                  {plan === "premium" ? "Premium Plan - Monthly (28 days)" : "Premium Seller - Monthly (28 days)"}
                 </p>
               </div>
 
@@ -202,6 +243,26 @@ export default function MpesaPaymentModal({
               >
                 Close
               </Button>
+            </motion.div>
+          ) : status === "success" ? (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="py-8 text-center"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", bounce: 0.5 }}
+              >
+                <CheckCircle className="h-16 w-16 mx-auto text-success" />
+              </motion.div>
+              <p className="mt-4 font-medium text-success">Payment Successful!</p>
+              <p className="text-sm text-muted-foreground">
+                Welcome to {plan === "premium" ? "Premium" : "Premium Seller"}!
+              </p>
             </motion.div>
           ) : null}
         </AnimatePresence>

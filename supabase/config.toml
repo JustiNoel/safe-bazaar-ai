@@ -18,6 +18,15 @@ verify_jwt = false
 [functions.mpesa-callback]
 verify_jwt = false
 
+[functions.check-mpesa-status]
+verify_jwt = false
+
+[functions.bulk-scan]
+verify_jwt = false
+
+[functions.seller-api]
+verify_jwt = false
+
 [functions.send-welcome-email]
 verify_jwt = false
 

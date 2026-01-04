@@ -41,6 +41,57 @@ export type Database = {
         }
         Relationships: []
       }
+      mpesa_transactions: {
+        Row: {
+          amount: number
+          checkout_request_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          merchant_request_id: string | null
+          mpesa_receipt_number: string | null
+          phone_number: string
+          plan: string
+          result_code: number | null
+          result_desc: string | null
+          status: string
+          transaction_date: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          checkout_request_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt_number?: string | null
+          phone_number: string
+          plan: string
+          result_code?: number | null
+          result_desc?: string | null
+          status?: string
+          transaction_date?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          checkout_request_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt_number?: string | null
+          phone_number?: string
+          plan?: string
+          result_code?: number | null
+          result_desc?: string | null
+          status?: string
+          transaction_date?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           authenticity_score: number | null
@@ -76,6 +127,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          api_calls_today: number | null
+          api_key: string | null
           banned: boolean
           banned_at: string | null
           banned_reason: string | null
@@ -93,10 +146,15 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           scan_limit: number
           scans_today: number
+          seller_verified: boolean | null
+          subscription_tier: string | null
           updated_at: string
           user_id: string
+          voice_readout_enabled: boolean | null
         }
         Insert: {
+          api_calls_today?: number | null
+          api_key?: string | null
           banned?: boolean
           banned_at?: string | null
           banned_reason?: string | null
@@ -114,10 +172,15 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           scan_limit?: number
           scans_today?: number
+          seller_verified?: boolean | null
+          subscription_tier?: string | null
           updated_at?: string
           user_id: string
+          voice_readout_enabled?: boolean | null
         }
         Update: {
+          api_calls_today?: number | null
+          api_key?: string | null
           banned?: boolean
           banned_at?: string | null
           banned_reason?: string | null
@@ -135,8 +198,11 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           scan_limit?: number
           scans_today?: number
+          seller_verified?: boolean | null
+          subscription_tier?: string | null
           updated_at?: string
           user_id?: string
+          voice_readout_enabled?: boolean | null
         }
         Relationships: [
           {
@@ -237,6 +303,59 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          auto_renew: boolean | null
+          created_at: string | null
+          expires_at: string
+          id: string
+          payment_method: string
+          plan: string
+          starts_at: string
+          status: string
+          stripe_subscription_id: string | null
+          transaction_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_renew?: boolean | null
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          payment_method: string
+          plan: string
+          starts_at?: string
+          status?: string
+          stripe_subscription_id?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_renew?: boolean | null
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          payment_method?: string
+          plan?: string
+          starts_at?: string
+          status?: string
+          stripe_subscription_id?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mpesa_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -260,6 +379,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_api_key: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
