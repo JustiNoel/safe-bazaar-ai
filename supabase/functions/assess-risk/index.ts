@@ -167,6 +167,35 @@ serve(async (req) => {
       
       // Check if limit reached BEFORE performing scan
       if (scansUsed >= scanLimit) {
+        // Get user email for notification
+        if (userId) {
+          const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+          const userEmail = authUser?.user?.email;
+          const userPhone = userProfile?.phone;
+
+          // Send limit notification in background (don't block response)
+          if (userEmail || userPhone) {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+            
+            // Fire and forget - don't await
+            fetch(`${supabaseUrl}/functions/v1/send-limit-notification`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${supabaseAnonKey}`,
+              },
+              body: JSON.stringify({
+                email: userEmail,
+                phone: userPhone,
+                scansUsed: scansUsed,
+                scanLimit: scanLimit,
+                nextResetTime: nextResetTime,
+              }),
+            }).catch(err => console.error("Failed to send limit notification:", err));
+          }
+        }
+
         return new Response(
           JSON.stringify({ 
             error: "Scan limit reached. Upgrade to premium for unlimited scans!",
