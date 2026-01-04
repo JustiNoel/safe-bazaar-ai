@@ -74,18 +74,34 @@ const ReferralCard = () => {
     const message = encodeURIComponent(
       `🛡️ Hey! I use Safe Bazaar AI to check if online products are safe before buying. Get 3 free scans daily!\n\nJoin with my link and we both get bonus scans: ${referralLink}`
     );
-    window.open(`https://wa.me/?text=${message}`, "_blank");
+    const url = `https://wa.me/?text=${message}`;
+    // Use window.location for mobile compatibility
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.href = url;
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   };
 
   const shareViaTwitter = () => {
     const text = encodeURIComponent(
       `🛡️ Stay safe when shopping online in Kenya! @SafeBazaarAI helps detect scams & fraud. Join with my link:`
     );
-    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(referralLink)}`, "_blank");
+    const url = `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(referralLink)}`;
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.href = url;
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   };
 
   const shareViaFacebook = () => {
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`, "_blank");
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`;
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.href = url;
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   };
 
   const getTierInfo = (count: number) => {
