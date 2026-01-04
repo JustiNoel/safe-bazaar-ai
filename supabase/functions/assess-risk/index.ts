@@ -178,6 +178,9 @@ serve(async (req) => {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
             const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
             
+            // Get user's notification preferences
+            const emailPrefs = userProfile?.email_preferences as Record<string, boolean> | null;
+            
             // Fire and forget - don't await
             fetch(`${supabaseUrl}/functions/v1/send-limit-notification`, {
               method: "POST",
@@ -191,6 +194,10 @@ serve(async (req) => {
                 scansUsed: scansUsed,
                 scanLimit: scanLimit,
                 nextResetTime: nextResetTime,
+                preferences: {
+                  limit_alerts_email: emailPrefs?.limit_alerts_email !== false,
+                  limit_alerts_sms: emailPrefs?.limit_alerts_sms !== false,
+                },
               }),
             }).catch(err => console.error("Failed to send limit notification:", err));
           }
