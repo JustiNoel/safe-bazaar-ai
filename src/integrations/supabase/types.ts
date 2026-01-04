@@ -135,6 +135,7 @@ export type Database = {
           bonus_scans: number
           created_at: string
           email_preferences: Json | null
+          fcm_token: string | null
           id: string
           last_scan_reset: string | null
           phone: string | null
@@ -161,6 +162,7 @@ export type Database = {
           bonus_scans?: number
           created_at?: string
           email_preferences?: Json | null
+          fcm_token?: string | null
           id?: string
           last_scan_reset?: string | null
           phone?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           bonus_scans?: number
           created_at?: string
           email_preferences?: Json | null
+          fcm_token?: string | null
           id?: string
           last_scan_reset?: string | null
           phone?: string | null
