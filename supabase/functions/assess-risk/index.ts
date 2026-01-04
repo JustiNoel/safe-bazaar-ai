@@ -212,22 +212,38 @@ Consider Kenyan market context: counterfeit electronics, unverified M-Pesa trans
 
     console.log(`Using AI model: ${modelConfig.name}`);
 
-    // Call AI API
-    const aiResponse = await fetch(modelConfig.endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: modelConfig.name,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.7,
-      }),
-    });
+    // Function to call AI API with fallback
+    const callAI = async (config: typeof modelConfig, key: string): Promise<any> => {
+      const response = await fetch(config.endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: config.name,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.7,
+        }),
+      });
+      return response;
+    };
+
+    let aiResponse = await callAI(modelConfig, apiKey!);
+
+    // If primary model fails (403/402/429), try fallback to Gemini
+    if (!aiResponse.ok && modelConfig.name !== AI_MODELS.gemini.name && LOVABLE_API_KEY) {
+      const errorText = await aiResponse.text();
+      console.warn(`Primary AI (${modelConfig.name}) failed: ${aiResponse.status} - ${errorText}`);
+      console.log("Falling back to Gemini via Lovable AI Gateway...");
+      
+      modelConfig = AI_MODELS.gemini;
+      apiKey = LOVABLE_API_KEY;
+      aiResponse = await callAI(modelConfig, apiKey);
+    }
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
@@ -247,7 +263,49 @@ Consider Kenyan market context: counterfeit electronics, unverified M-Pesa trans
         );
       }
       
-      throw new Error(`AI gateway error: ${aiResponse.status}`);
+      // Use fallback assessment if all AI calls fail
+      console.warn("All AI calls failed, using fallback assessment");
+      const fallbackAssessment = generateFallbackAssessment();
+      
+      // Still store the scan with fallback data
+      const { data: product } = await supabase
+        .from("products")
+        .insert({
+          vendor_name: productInfo?.vendor || "Unknown",
+          product_name: productInfo?.name || "Scanned Product",
+          price: productInfo?.price || null,
+          image_url: imageUrl,
+          source_platform: productInfo?.platform || "Manual Upload",
+          authenticity_score: fallbackAssessment.overall_score,
+        })
+        .select()
+        .single();
+
+      await supabase
+        .from("scans")
+        .insert({
+          user_id: userId,
+          product_id: product?.id,
+          overall_score: fallbackAssessment.overall_score,
+          verdict: fallbackAssessment.verdict,
+          risk_breakdown: fallbackAssessment.risk_factors,
+          alternatives: fallbackAssessment.safer_alternatives,
+          is_guest: !userId,
+        });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          assessment: fallbackAssessment,
+          modelUsed: "fallback",
+          scansUsed: userProfile && !userProfile.premium ? scansUsed : null,
+          scanLimit: userProfile && !userProfile.premium ? scanLimit : null,
+          scansRemaining: userProfile && !userProfile.premium ? scanLimit - scansUsed : null,
+          nextResetTime: userProfile && !userProfile.premium ? nextResetTime : null,
+          isPremium: userProfile?.premium || false
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const aiData = await aiResponse.json();

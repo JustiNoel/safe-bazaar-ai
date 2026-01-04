@@ -49,7 +49,13 @@ const ShareResults = ({ score, verdict, productName }: ShareResultsProps) => {
   };
 
   const handleShare = (platform: keyof typeof shareLinks) => {
-    window.open(shareLinks[platform], "_blank", "noopener,noreferrer,width=600,height=400");
+    const url = shareLinks[platform];
+    // Use window.location for mobile compatibility to avoid popup blockers
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.href = url;
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer,width=600,height=400");
+    }
   };
 
   return (
