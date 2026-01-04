@@ -16,6 +16,8 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import BulkScan from "./pages/BulkScan";
+import SellerAnalytics from "./pages/SellerAnalytics";
 import WelcomeModal from "./components/WelcomeModal";
 import InstallPWA from "./components/InstallPWA";
 
@@ -48,6 +50,8 @@ const AnimatedRoutes = () => {
           <Route path="/history" element={<ScanHistory />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/premium" element={<Premium />} />
+          <Route path="/bulk-scan" element={<BulkScan />} />
+          <Route path="/seller-analytics" element={<SellerAnalytics />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />

@@ -13,6 +13,15 @@ export interface UserProfile {
   premium: boolean;
   scans_today: number;
   scan_limit: number;
+  subscription_tier?: 'free' | 'premium' | 'premium_seller';
+  voice_readout_enabled?: boolean;
+  seller_verified?: boolean;
+  api_key?: string;
+  api_calls_today?: number;
+  premium_expires_at?: string;
+  referral_code?: string;
+  referral_count?: number;
+  bonus_scans?: number;
 }
 
 export interface SubscriptionStatus {
@@ -41,6 +50,7 @@ interface AuthContextType {
   checkSubscription: () => Promise<void>;
   createCheckout: (plan: 'premium' | 'premium_seller') => Promise<void>;
   openCustomerPortal: () => Promise<void>;
+  checkMpesaPayment: (checkoutRequestId: string) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,6 +86,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!session) return;
     
     try {
+      // First check local profile for M-Pesa subscriptions
+      if (session.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (profile?.subscription_tier && profile.subscription_tier !== 'free') {
+          setSubscription({
+            subscribed: true,
+            tier: profile.subscription_tier as 'premium' | 'premium_seller',
+            subscription_end: profile.premium_expires_at || null,
+          });
+          setUser(prev => prev ? { ...prev, profile } : null);
+          return;
+        }
+      }
+      
+      // Then check Stripe subscriptions
       const { data, error } = await supabase.functions.invoke('check-subscription');
       
       if (error) {
@@ -106,6 +131,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: session.user.email!,
         profile,
       });
+      
+      // Update subscription status from profile
+      if (profile.subscription_tier && profile.subscription_tier !== 'free') {
+        setSubscription({
+          subscribed: true,
+          tier: profile.subscription_tier as 'premium' | 'premium_seller',
+          subscription_end: profile.premium_expires_at || null,
+        });
+      }
+    }
+  };
+
+  const checkMpesaPayment = async (checkoutRequestId: string) => {
+    if (!session) return null;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('check-mpesa-status', {
+        body: { checkoutRequestId }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.transaction?.status === 'completed') {
+        // Refresh profile and subscription
+        await refreshProfile();
+        await checkSubscription();
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('M-Pesa status check failed:', error);
+      return null;
     }
   };
 
@@ -322,6 +379,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       checkSubscription,
       createCheckout,
       openCustomerPortal,
+      checkMpesaPayment,
     }}>
       {children}
     </AuthContext.Provider>
