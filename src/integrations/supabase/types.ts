@@ -41,6 +41,75 @@ export type Database = {
         }
         Relationships: []
       }
+      county_scams: {
+        Row: {
+          county_name: string
+          created_at: string
+          data_source: string | null
+          details: Json | null
+          id: string
+          last_reported_at: string | null
+          risk_level: string
+          scam_count: number
+          scam_type: string
+          updated_at: string
+        }
+        Insert: {
+          county_name: string
+          created_at?: string
+          data_source?: string | null
+          details?: Json | null
+          id?: string
+          last_reported_at?: string | null
+          risk_level?: string
+          scam_count?: number
+          scam_type: string
+          updated_at?: string
+        }
+        Update: {
+          county_name?: string
+          created_at?: string
+          data_source?: string | null
+          details?: Json | null
+          id?: string
+          last_reported_at?: string | null
+          risk_level?: string
+          scam_count?: number
+          scam_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      exec_members: {
+        Row: {
+          added_by: string
+          created_at: string
+          email: string
+          id: string
+          permissions: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          email: string
+          id?: string
+          permissions?: Json | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          email?: string
+          id?: string
+          permissions?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mpesa_transactions: {
         Row: {
           amount: number
@@ -261,6 +330,42 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      scan_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          issued_by: string
+          reason: string | null
+          token_count: number
+          used: boolean
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          issued_by: string
+          reason?: string | null
+          token_count?: number
+          used?: boolean
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          issued_by?: string
+          reason?: string | null
+          token_count?: number
+          used?: boolean
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       scans: {
         Row: {

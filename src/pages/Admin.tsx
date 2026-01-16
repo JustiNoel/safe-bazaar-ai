@@ -14,7 +14,12 @@ import {
   Ban,
   RotateCcw,
   Sparkles,
-  MoreHorizontal
+  MoreHorizontal,
+  Gift,
+  UserPlus,
+  Search,
+  Mail,
+  Phone
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,6 +88,13 @@ interface UserRecord {
   banned: boolean;
   banned_reason: string | null;
   premium_expires_at: string | null;
+  phone: string | null;
+  bonus_scans: number;
+  subscription_tier: string | null;
+}
+
+interface UserWithEmail extends UserRecord {
+  email?: string;
 }
 
 export default function Admin() {
@@ -97,16 +109,21 @@ export default function Admin() {
     averageScore: 0,
   });
   const [recentScans, setRecentScans] = useState<ScanRecord[]>([]);
-  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [users, setUsers] = useState<UserWithEmail[]>([]);
+  const [allUsers, setAllUsers] = useState<UserWithEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Dialog states
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [premiumDialogOpen, setPremiumDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserWithEmail | null>(null);
   const [banReason, setBanReason] = useState("");
   const [premiumDays, setPremiumDays] = useState("30");
+  const [tokenCount, setTokenCount] = useState("5");
+  const [tokenReason, setTokenReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -119,6 +136,23 @@ export default function Admin() {
       checkAdminAccess();
     }
   }, [user, isAuthenticated, isLoading, navigate]);
+
+  // Filter users based on search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setUsers(allUsers);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = allUsers.filter(u => 
+      u.user_id.toLowerCase().includes(query) ||
+      u.email?.toLowerCase().includes(query) ||
+      u.phone?.toLowerCase().includes(query) ||
+      u.role.toLowerCase().includes(query)
+    );
+    setUsers(filtered);
+  }, [searchQuery, allUsers]);
 
   const checkAdminAccess = async () => {
     if (!user) return;
@@ -200,13 +234,15 @@ export default function Admin() {
 
       setRecentScans(recentScansData || []);
 
+      // Fetch ALL users with their details
       const { data: usersData } = await supabase
         .from("profiles")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .order("created_at", { ascending: false });
 
-      setUsers((usersData as UserRecord[]) || []);
+      const typedUsers = (usersData as UserRecord[]) || [];
+      setAllUsers(typedUsers);
+      setUsers(typedUsers);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast.error("Failed to load dashboard data");
@@ -231,7 +267,6 @@ export default function Admin() {
 
       if (updateError) throw updateError;
 
-      // Log admin action
       await supabase.from("admin_actions").insert({
         admin_id: user.id,
         action_type: "ban_user",
@@ -251,7 +286,7 @@ export default function Admin() {
     }
   };
 
-  const handleUnbanUser = async (userRecord: UserRecord) => {
+  const handleUnbanUser = async (userRecord: UserWithEmail) => {
     if (!user) return;
     
     try {
@@ -281,7 +316,7 @@ export default function Admin() {
     }
   };
 
-  const handleResetScans = async (userRecord: UserRecord) => {
+  const handleResetScans = async (userRecord: UserWithEmail) => {
     if (!user) return;
     
     try {
@@ -307,6 +342,56 @@ export default function Admin() {
     }
   };
 
+  const handleIssueScanTokens = async () => {
+    if (!selectedUser || !user) return;
+    
+    setActionLoading(true);
+    try {
+      const tokens = parseInt(tokenCount) || 5;
+      
+      // Add to user's bonus_scans
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          bonus_scans: (selectedUser.bonus_scans || 0) + tokens,
+        })
+        .eq("user_id", selectedUser.user_id);
+
+      if (updateError) throw updateError;
+
+      // Log the token issuance
+      const { error: tokenError } = await supabase
+        .from("scan_tokens")
+        .insert({
+          user_id: selectedUser.user_id,
+          token_count: tokens,
+          issued_by: user.id,
+          reason: tokenReason || "Admin issued bonus scans",
+        });
+
+      if (tokenError) throw tokenError;
+
+      // Log admin action
+      await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "issue_scan_tokens",
+        target_user_id: selectedUser.user_id,
+        details: { token_count: tokens, reason: tokenReason },
+      });
+
+      toast.success(`Issued ${tokens} bonus scans to user`);
+      setTokenDialogOpen(false);
+      setTokenCount("5");
+      setTokenReason("");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error issuing tokens:", error);
+      toast.error("Failed to issue scan tokens");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleUpgradePremium = async () => {
     if (!selectedUser || !user) return;
     
@@ -322,6 +407,7 @@ export default function Admin() {
           premium: true,
           scan_limit: 999,
           premium_expires_at: expiresAt.toISOString(),
+          subscription_tier: "premium",
         })
         .eq("user_id", selectedUser.user_id);
 
@@ -346,7 +432,7 @@ export default function Admin() {
     }
   };
 
-  const handleRevokePremium = async (userRecord: UserRecord) => {
+  const handleRevokePremium = async (userRecord: UserWithEmail) => {
     if (!user) return;
     
     try {
@@ -356,6 +442,7 @@ export default function Admin() {
           premium: false,
           scan_limit: 3,
           premium_expires_at: null,
+          subscription_tier: "free",
         })
         .eq("user_id", userRecord.user_id);
 
@@ -554,13 +641,193 @@ export default function Admin() {
         </div>
 
         {/* Tabs for detailed views */}
-        <Tabs defaultValue="analytics" className="space-y-6">
+        <Tabs defaultValue="users" className="space-y-6">
           <TabsList className="grid w-full max-w-lg grid-cols-4">
+            <TabsTrigger value="users">All Users</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="scans">Recent Scans</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="regions">Regions</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <CardTitle>All Users ({allUsers.length})</CardTitle>
+                    <CardDescription>
+                      Manage all registered users, issue scan tokens, and control access
+                    </CardDescription>
+                  </div>
+                  <div className="relative w-full max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by ID, email, or phone..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Scans</TableHead>
+                        <TableHead>Bonus</TableHead>
+                        <TableHead>Joined</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((userRecord) => (
+                        <TableRow key={userRecord.id} className={userRecord.banned ? "opacity-60" : ""}>
+                          <TableCell className="font-mono text-xs">
+                            {userRecord.user_id.slice(0, 8)}...
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1 text-xs">
+                              {userRecord.email && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {userRecord.email}
+                                </span>
+                              )}
+                              {userRecord.phone && (
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  {userRecord.phone}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">
+                              {userRecord.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              {userRecord.banned ? (
+                                <Badge variant="destructive" className="w-fit">
+                                  <Ban className="h-3 w-3 mr-1" />
+                                  Banned
+                                </Badge>
+                              ) : userRecord.premium ? (
+                                <Badge className="bg-accent text-accent-foreground w-fit">
+                                  <Crown className="h-3 w-3 mr-1" />
+                                  {userRecord.subscription_tier || "Premium"}
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="w-fit">Free</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">
+                              {userRecord.scans_today} / {userRecord.scan_limit === 999 ? '∞' : userRecord.scan_limit}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-medium text-primary">
+                              +{userRecord.bonus_scans || 0}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(userRecord.created_at).toLocaleDateString('en-KE', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedUser(userRecord);
+                                    setTokenDialogOpen(true);
+                                  }}
+                                >
+                                  <Gift className="h-4 w-4 mr-2" />
+                                  Issue Scan Tokens
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleResetScans(userRecord)}
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Reset Daily Scans
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {userRecord.premium ? (
+                                  <DropdownMenuItem
+                                    onClick={() => handleRevokePremium(userRecord)}
+                                    className="text-destructive"
+                                  >
+                                    <Crown className="h-4 w-4 mr-2" />
+                                    Revoke Premium
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedUser(userRecord);
+                                      setPremiumDialogOpen(true);
+                                    }}
+                                  >
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    Upgrade to Premium
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                {userRecord.banned ? (
+                                  <DropdownMenuItem
+                                    onClick={() => handleUnbanUser(userRecord)}
+                                    className="text-success"
+                                  >
+                                    <Shield className="h-4 w-4 mr-2" />
+                                    Unban User
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedUser(userRecord);
+                                      setBanDialogOpen(true);
+                                    }}
+                                    className="text-destructive"
+                                  >
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Ban User
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {users.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    {searchQuery ? "No users match your search" : "No users found"}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="analytics">
             <AnalyticsDashboard scans={recentScans} />
@@ -586,7 +853,7 @@ export default function Admin() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentScans.map((scan) => (
+                    {recentScans.slice(0, 50).map((scan) => (
                       <TableRow key={scan.id}>
                         <TableCell>
                           {new Date(scan.created_at).toLocaleDateString('en-KE', {
@@ -626,144 +893,17 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="users">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>
-                  Manage users, subscriptions, and access control
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User ID</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Scans</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((userRecord) => (
-                      <TableRow key={userRecord.id} className={userRecord.banned ? "opacity-60" : ""}>
-                        <TableCell className="font-mono text-xs">
-                          {userRecord.user_id.slice(0, 8)}...
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">
-                            {userRecord.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            {userRecord.banned ? (
-                              <Badge variant="destructive" className="w-fit">
-                                <Ban className="h-3 w-3 mr-1" />
-                                Banned
-                              </Badge>
-                            ) : userRecord.premium ? (
-                              <Badge className="bg-accent text-accent-foreground w-fit">
-                                <Crown className="h-3 w-3 mr-1" />
-                                Premium
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="w-fit">Free</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">
-                            {userRecord.scans_today} / {userRecord.scan_limit === 999 ? '∞' : userRecord.scan_limit}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(userRecord.created_at).toLocaleDateString('en-KE', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleResetScans(userRecord)}
-                              >
-                                <RotateCcw className="h-4 w-4 mr-2" />
-                                Reset Daily Scans
-                              </DropdownMenuItem>
-                              {userRecord.premium ? (
-                                <DropdownMenuItem
-                                  onClick={() => handleRevokePremium(userRecord)}
-                                  className="text-destructive"
-                                >
-                                  <Crown className="h-4 w-4 mr-2" />
-                                  Revoke Premium
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedUser(userRecord);
-                                    setPremiumDialogOpen(true);
-                                  }}
-                                >
-                                  <Sparkles className="h-4 w-4 mr-2" />
-                                  Upgrade to Premium
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              {userRecord.banned ? (
-                                <DropdownMenuItem
-                                  onClick={() => handleUnbanUser(userRecord)}
-                                  className="text-success"
-                                >
-                                  <Shield className="h-4 w-4 mr-2" />
-                                  Unban User
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedUser(userRecord);
-                                    setBanDialogOpen(true);
-                                  }}
-                                  className="text-destructive"
-                                >
-                                  <Ban className="h-4 w-4 mr-2" />
-                                  Ban User
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="regions">
             <Card>
               <CardHeader>
                 <CardTitle>Regional Statistics</CardTitle>
                 <CardDescription>
-                  Detailed breakdown of scam reports by region
+                  Real-time breakdown of scam reports by county. Data updates automatically.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Click on regions in the heatmap above to view detailed statistics.
+                  Click on counties in the heatmap above to view detailed scam statistics and types.
                 </p>
               </CardContent>
             </Card>
@@ -837,6 +977,61 @@ export default function Admin() {
               disabled={actionLoading}
             >
               {actionLoading ? "Upgrading..." : "Upgrade to Premium"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Issue Scan Tokens Dialog */}
+      <Dialog open={tokenDialogOpen} onOpenChange={setTokenDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              Issue Scan Tokens
+            </DialogTitle>
+            <DialogDescription>
+              Grant bonus scans to this user. These are added on top of their daily limit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedUser && (
+              <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                <p className="font-medium">User: {selectedUser.user_id.slice(0, 12)}...</p>
+                {selectedUser.phone && <p className="text-muted-foreground">Phone: {selectedUser.phone}</p>}
+                <p className="text-muted-foreground">Current bonus: +{selectedUser.bonus_scans || 0}</p>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="token-count">Number of Tokens</Label>
+              <Input
+                id="token-count"
+                type="number"
+                min="1"
+                max="100"
+                value={tokenCount}
+                onChange={(e) => setTokenCount(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="token-reason">Reason (optional)</Label>
+              <Textarea
+                id="token-reason"
+                placeholder="e.g., Customer support compensation, promotion..."
+                value={tokenReason}
+                onChange={(e) => setTokenReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTokenDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleIssueScanTokens}
+              disabled={actionLoading}
+            >
+              {actionLoading ? "Issuing..." : `Issue ${tokenCount} Tokens`}
             </Button>
           </DialogFooter>
         </DialogContent>
