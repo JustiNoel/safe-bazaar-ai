@@ -14,6 +14,7 @@ import PremiumUpgradeModal from "@/components/PremiumUpgradeModal";
 import ScanLimitModal from "@/components/ScanLimitModal";
 import ScanningAnimation from "@/components/ScanningAnimation";
 import ReferralCard from "@/components/ReferralCard";
+import AIAssistant from "@/components/AIAssistant";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -222,6 +223,7 @@ const Scan = () => {
         nextResetTime={scanStats.nextResetTime}
         isLimitReached={scanStats.isLimitReached}
       />
+      <AIAssistant />
     </div>
   );
 };

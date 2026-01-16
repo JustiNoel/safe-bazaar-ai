@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.send-limit-notification]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
