@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Bell, Mail, Phone, Loader2 } from "lucide-react";
+import { Bell, Mail, Phone, Loader2, Smartphone, AlertCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 
 interface EmailPreferences {
@@ -15,6 +17,7 @@ interface EmailPreferences {
   daily_digest: boolean;
   limit_alerts_email: boolean;
   limit_alerts_sms: boolean;
+  push_notifications: boolean;
 }
 
 const defaultPreferences: EmailPreferences = {
@@ -24,6 +27,7 @@ const defaultPreferences: EmailPreferences = {
   daily_digest: true,
   limit_alerts_email: true,
   limit_alerts_sms: true,
+  push_notifications: false,
 };
 
 export default function NotificationPreferences() {
@@ -31,6 +35,7 @@ export default function NotificationPreferences() {
   const [preferences, setPreferences] = useState<EmailPreferences>(defaultPreferences);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const { isSupported, permission, requestPermission, isLoading: isPushLoading } = usePushNotifications();
 
   useEffect(() => {
     if (user?.id) {
@@ -78,6 +83,13 @@ export default function NotificationPreferences() {
     setIsSaving(false);
   };
 
+  const handleEnablePush = async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      await updatePreference("push_notifications", true);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -109,6 +121,70 @@ export default function NotificationPreferences() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Push Notifications Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Push Notifications
+            </h3>
+            
+            <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Smartphone className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <Label className="font-medium">Browser/PWA Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Get instant alerts on your device
+                    </p>
+                  </div>
+                </div>
+                {isSupported ? (
+                  permission === "granted" ? (
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={preferences.push_notifications}
+                        onCheckedChange={(checked) => updatePreference("push_notifications", checked)}
+                        disabled={isSaving}
+                      />
+                    </div>
+                  ) : permission === "denied" ? (
+                    <div className="flex items-center gap-2 text-destructive text-sm">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>Blocked</span>
+                    </div>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      onClick={handleEnablePush}
+                      disabled={isPushLoading}
+                    >
+                      {isPushLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Enable"
+                      )}
+                    </Button>
+                  )
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not supported</span>
+                )}
+              </div>
+              
+              {permission === "granted" && preferences.push_notifications && (
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Push notifications are active</span>
+                </div>
+              )}
+              
+              {permission === "denied" && (
+                <p className="text-xs text-muted-foreground">
+                  To enable notifications, update your browser settings for this site.
+                </p>
+              )}
+            </div>
+          </div>
+
           {/* Limit Alerts Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
