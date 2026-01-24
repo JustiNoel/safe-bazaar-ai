@@ -139,15 +139,7 @@ export default function ExecMemberManagement() {
 
     setInviting(true);
     try {
-      // Check if user exists
-      const { data: existingUser, error: lookupError } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .limit(1);
-
-      // For now, we'll create a placeholder entry
-      // In production, you'd send an email invitation
-      
+      // Insert exec member record
       const { error } = await supabase.from("exec_members").insert({
         email: inviteEmail.toLowerCase(),
         user_id: crypto.randomUUID(), // Placeholder until user accepts
@@ -165,7 +157,23 @@ export default function ExecMemberManagement() {
         return;
       }
 
-      toast.success(`Invited ${inviteEmail} as ${inviteRole}`);
+      // Send invitation email
+      const { error: emailError } = await supabase.functions.invoke("send-exec-invite", {
+        body: {
+          email: inviteEmail.toLowerCase(),
+          role: inviteRole,
+          permissions: selectedPermissions,
+          inviterEmail: user.email,
+        },
+      });
+
+      if (emailError) {
+        console.error("Failed to send email:", emailError);
+        toast.success(`Added ${inviteEmail} as ${inviteRole} (email notification may be delayed)`);
+      } else {
+        toast.success(`Invited ${inviteEmail} as ${inviteRole} - invitation email sent!`);
+      }
+
       setDialogOpen(false);
       setInviteEmail("");
       setSelectedPermissions({
