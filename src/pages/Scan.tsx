@@ -272,6 +272,8 @@ const Scan = () => {
                 </div>
               )}
             </div>
+          ) : scanMode === "link" && linkAnalysisData ? (
+            <LinkAnalysisResult analysis={linkAnalysisData} onNewScan={resetScan} />
           ) : (
             <RiskAssessment onNewScan={resetScan} productImage={imageUrl} assessmentData={assessmentData} />
           )}

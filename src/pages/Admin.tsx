@@ -58,6 +58,7 @@ import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
 import KenyaHeatmap from "@/components/KenyaHeatmap";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import ExecMemberManagement from "@/components/ExecMemberManagement";
 
 interface DashboardStats {
   totalUsers: number;
@@ -642,8 +643,9 @@ export default function Admin() {
 
         {/* Tabs for detailed views */}
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full max-w-lg grid-cols-4">
+          <TabsList className="grid w-full max-w-2xl grid-cols-5">
             <TabsTrigger value="users">All Users</TabsTrigger>
+            <TabsTrigger value="team">Exec Team</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="scans">Recent Scans</TabsTrigger>
             <TabsTrigger value="regions">Regions</TabsTrigger>
@@ -827,6 +829,10 @@ export default function Admin() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="team">
+            <ExecMemberManagement />
           </TabsContent>
 
           <TabsContent value="analytics">
