@@ -219,57 +219,58 @@ const Scan = () => {
                   {isAuthenticated && <div className="lg:col-span-1"><ReferralCard /></div>}
                 </div>
               ) : (
-                <div className="lg:col-span-2">
-                  <Card className="p-6 md:p-8 shadow-medium">
-                    <Tabs defaultValue="upload" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 mb-6">
-                        <TabsTrigger value="upload"><Upload className="w-4 h-4 mr-2" />Upload Image</TabsTrigger>
-                        <TabsTrigger value="url"><LinkIcon className="w-4 h-4 mr-2" />Product URL</TabsTrigger>
-                      </TabsList>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <Card className="p-6 md:p-8 shadow-medium">
+                      <Tabs defaultValue="upload" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 mb-6">
+                          <TabsTrigger value="upload"><Upload className="w-4 h-4 mr-2" />Upload Image</TabsTrigger>
+                          <TabsTrigger value="url"><LinkIcon className="w-4 h-4 mr-2" />Product URL</TabsTrigger>
+                        </TabsList>
 
-                      <TabsContent value="upload" className="space-y-6">
-                        <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors">
-                          <input type="file" id="file-upload" className="hidden" accept="image/*" capture="environment" onChange={handleFileUpload} />
-                          <label htmlFor="file-upload" className="cursor-pointer">
-                            <div className="flex flex-col items-center gap-4">
-                              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Camera className="w-8 h-8 text-primary" />
+                        <TabsContent value="upload" className="space-y-6">
+                          <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors">
+                            <input type="file" id="file-upload" className="hidden" accept="image/*" capture="environment" onChange={handleFileUpload} />
+                            <label htmlFor="file-upload" className="cursor-pointer">
+                              <div className="flex flex-col items-center gap-4">
+                                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <Camera className="w-8 h-8 text-primary" />
+                                </div>
+                                <div><p className="text-lg font-medium">Take or upload a photo</p><p className="text-sm text-muted-foreground mt-1">Maximum file size: 10MB</p></div>
                               </div>
-                              <div><p className="text-lg font-medium">Take or upload a photo</p><p className="text-sm text-muted-foreground mt-1">Maximum file size: 10MB</p></div>
-                            </div>
-                          </label>
-                        </div>
-                        {imageUrl && <div className="rounded-lg overflow-hidden border border-border"><img src={imageUrl} alt="Preview" className="w-full h-64 object-cover" /></div>}
-                        <div className="space-y-4">
-                          <Label>Optional: Add Product Details</Label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input placeholder="Product Name" value={productInfo.name} onChange={(e) => setProductInfo({...productInfo, name: e.target.value})} />
-                            <Input placeholder="Vendor Name" value={productInfo.vendor} onChange={(e) => setProductInfo({...productInfo, vendor: e.target.value})} />
-                            <Input placeholder="Price (KSh)" type="number" value={productInfo.price} onChange={(e) => setProductInfo({...productInfo, price: e.target.value})} />
-                            <Input placeholder="Platform" value={productInfo.platform} onChange={(e) => setProductInfo({...productInfo, platform: e.target.value})} />
+                            </label>
                           </div>
-                        </div>
-                      </TabsContent>
+                          {imageUrl && <div className="rounded-lg overflow-hidden border border-border"><img src={imageUrl} alt="Preview" className="w-full h-64 object-cover" /></div>}
+                          <div className="space-y-4">
+                            <Label>Optional: Add Product Details</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <Input placeholder="Product Name" value={productInfo.name} onChange={(e) => setProductInfo({...productInfo, name: e.target.value})} />
+                              <Input placeholder="Vendor Name" value={productInfo.vendor} onChange={(e) => setProductInfo({...productInfo, vendor: e.target.value})} />
+                              <Input placeholder="Price (KSh)" type="number" value={productInfo.price} onChange={(e) => setProductInfo({...productInfo, price: e.target.value})} />
+                              <Input placeholder="Platform" value={productInfo.platform} onChange={(e) => setProductInfo({...productInfo, platform: e.target.value})} />
+                            </div>
+                          </div>
+                        </TabsContent>
 
-                      <TabsContent value="url" className="space-y-6">
-                        <div><Label htmlFor="product-url" className="mb-2 block">Product URL from Jumia, Kilimall, or other marketplaces</Label>
-                        <Input id="product-url" type="url" placeholder="https://www.jumia.co.ke/..." value={productUrl} onChange={(e) => setProductUrl(e.target.value)} /></div>
-                      </TabsContent>
-                    </Tabs>
+                        <TabsContent value="url" className="space-y-6">
+                          <div><Label htmlFor="product-url" className="mb-2 block">Product URL from Jumia, Kilimall, or other marketplaces</Label>
+                          <Input id="product-url" type="url" placeholder="https://www.jumia.co.ke/..." value={productUrl} onChange={(e) => setProductUrl(e.target.value)} /></div>
+                        </TabsContent>
+                      </Tabs>
 
-                    <Button onClick={handleAnalyze} disabled={isAnalyzing || (!imageUrl && !productUrl)} className="w-full mt-6" size="lg">
-                      {isAnalyzing ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Analyzing with AI...</> : "Analyze Product"}
-                    </Button>
-                  </Card>
-                </div>
-
-                {/* Referral Card Sidebar */}
-                {isAuthenticated && (
-                  <div className="lg:col-span-1">
-                    <ReferralCard />
+                      <Button onClick={handleAnalyze} disabled={isAnalyzing || (!imageUrl && !productUrl)} className="w-full mt-6" size="lg">
+                        {isAnalyzing ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Analyzing with AI...</> : "Analyze Product"}
+                      </Button>
+                    </Card>
                   </div>
-                )}
-              </div>
+
+                  {isAuthenticated && (
+                    <div className="lg:col-span-1">
+                      <ReferralCard />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <RiskAssessment onNewScan={resetScan} productImage={imageUrl} assessmentData={assessmentData} />
