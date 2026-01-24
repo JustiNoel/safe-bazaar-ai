@@ -1,23 +1,34 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { History, Shield, AlertTriangle, XCircle, Calendar, ChevronRight, Loader2, Settings } from "lucide-react";
+import { History, Shield, AlertTriangle, XCircle, Calendar, Loader2, Settings, Link2, Package, Globe, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import NotificationPreferences from "@/components/NotificationPreferences";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+
+interface RiskBreakdown {
+  type?: string;
+  threats_detected?: string[];
+  domain_info?: {
+    domain: string;
+    is_trusted: boolean;
+  };
+  kenyan_context?: string[];
+}
 
 interface ScanRecord {
   id: string;
   overall_score: number;
   verdict: string;
   created_at: string;
+  risk_breakdown: RiskBreakdown | null;
   products: {
     product_name: string | null;
     vendor_name: string | null;
@@ -43,8 +54,9 @@ const itemVariants = {
 export default function ScanHistory() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [scans, setScans] = useState<ScanRecord[]>([]);
+  const [allScans, setAllScans] = useState<ScanRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [scanFilter, setScanFilter] = useState<"all" | "products" | "links">("all");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -67,6 +79,7 @@ export default function ScanHistory() {
         overall_score,
         verdict,
         created_at,
+        risk_breakdown,
         products (
           product_name,
           vendor_name,
@@ -77,40 +90,57 @@ export default function ScanHistory() {
       `)
       .eq("user_id", user?.id)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (error) {
       console.error("Error fetching scans:", error);
     } else {
-      setScans(data as ScanRecord[]);
+      setAllScans(data as ScanRecord[]);
     }
     setIsLoading(false);
   };
+
+  const getRiskBreakdown = (scan: ScanRecord): RiskBreakdown | null => {
+    if (!scan.risk_breakdown) return null;
+    return scan.risk_breakdown as RiskBreakdown;
+  };
+
+  const filteredScans = allScans.filter(scan => {
+    if (scanFilter === "all") return true;
+    const breakdown = getRiskBreakdown(scan);
+    const isLinkScan = breakdown?.type === "link_analysis";
+    if (scanFilter === "links") return isLinkScan;
+    if (scanFilter === "products") return !isLinkScan;
+    return true;
+  });
+
+  const linkScansCount = allScans.filter(s => getRiskBreakdown(s)?.type === "link_analysis").length;
+  const productScansCount = allScans.filter(s => getRiskBreakdown(s)?.type !== "link_analysis").length;
 
   const getVerdictConfig = (verdict: string) => {
     switch (verdict) {
       case "safe":
         return {
-          icon: Shield,
-          color: "text-green-500",
-          bgColor: "bg-green-500/10",
-          borderColor: "border-green-500/30",
+          icon: CheckCircle,
+          color: "text-success",
+          bgColor: "bg-success/10",
+          borderColor: "border-success/30",
           label: "Safe",
         };
       case "caution":
         return {
           icon: AlertTriangle,
-          color: "text-yellow-500",
-          bgColor: "bg-yellow-500/10",
-          borderColor: "border-yellow-500/30",
+          color: "text-warning",
+          bgColor: "bg-warning/10",
+          borderColor: "border-warning/30",
           label: "Caution",
         };
       default:
         return {
           icon: XCircle,
-          color: "text-red-500",
-          bgColor: "bg-red-500/10",
-          borderColor: "border-red-500/30",
+          color: "text-destructive",
+          bgColor: "bg-destructive/10",
+          borderColor: "border-destructive/30",
           label: "Unsafe",
         };
     }
@@ -186,23 +216,56 @@ export default function ScanHistory() {
                 </motion.div>
               )}
 
+              {/* Scan Type Filter */}
+              <div className="flex gap-2 mb-6 flex-wrap">
+                <Button
+                  variant={scanFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setScanFilter("all")}
+                >
+                  All ({allScans.length})
+                </Button>
+                <Button
+                  variant={scanFilter === "products" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setScanFilter("products")}
+                  className="flex items-center gap-1"
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  Products ({productScansCount})
+                </Button>
+                <Button
+                  variant={scanFilter === "links" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setScanFilter("links")}
+                  className="flex items-center gap-1"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  Links ({linkScansCount})
+                </Button>
+              </div>
+
               {isLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : scans.length === 0 ? (
+              ) : filteredScans.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="text-center py-16"
                 >
                   <History className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-                  <h2 className="text-xl font-semibold mb-2">No scans yet</h2>
+                  <h2 className="text-xl font-semibold mb-2">
+                    {scanFilter === "all" ? "No scans yet" : `No ${scanFilter} scans yet`}
+                  </h2>
                   <p className="text-muted-foreground mb-6">
-                    Start scanning products to see your history here
+                    {scanFilter === "links" 
+                      ? "Start scanning links to see your history here"
+                      : "Start scanning products to see your history here"}
                   </p>
                   <Button onClick={() => navigate("/scan")}>
-                    Scan Your First Product
+                    Start Scanning
                   </Button>
                 </motion.div>
               ) : (
@@ -212,18 +275,24 @@ export default function ScanHistory() {
                   animate="visible"
                   className="space-y-4"
                 >
-                  {scans.map((scan) => {
+                  {filteredScans.map((scan) => {
                     const config = getVerdictConfig(scan.verdict);
                     const VerdictIcon = config.icon;
+                    const breakdown = getRiskBreakdown(scan);
+                    const isLinkScan = breakdown?.type === "link_analysis";
 
                     return (
                       <motion.div key={scan.id} variants={itemVariants}>
                         <Card className={`overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 border ${config.borderColor}`}>
                           <CardContent className="p-0">
                             <div className="flex items-stretch">
-                              {/* Image */}
-                              <div className="w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 bg-muted">
-                                {scan.products?.image_url ? (
+                              {/* Image/Icon */}
+                              <div className="w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 bg-muted flex items-center justify-center">
+                                {isLinkScan ? (
+                                  <div className={`p-4 rounded-full ${config.bgColor}`}>
+                                    <Globe className={`h-8 w-8 ${config.color}`} />
+                                  </div>
+                                ) : scan.products?.image_url ? (
                                   <img
                                     src={scan.products.image_url}
                                     alt={scan.products.product_name || "Product"}
@@ -231,7 +300,7 @@ export default function ScanHistory() {
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center">
-                                    <Shield className="h-8 w-8 text-muted-foreground/50" />
+                                    <Package className="h-8 w-8 text-muted-foreground/50" />
                                   </div>
                                 )}
                               </div>
@@ -240,17 +309,30 @@ export default function ScanHistory() {
                               <div className="flex-1 p-4 flex flex-col justify-between">
                                 <div>
                                   <div className="flex items-start justify-between gap-2 mb-1">
-                                    <h3 className="font-semibold line-clamp-1">
-                                      {scan.products?.product_name || "Scanned Product"}
-                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                      {isLinkScan && (
+                                        <Badge variant="outline" className="text-xs">
+                                          <Link2 className="h-3 w-3 mr-1" />
+                                          Link
+                                        </Badge>
+                                      )}
+                                      <h3 className="font-semibold line-clamp-1">
+                                        {isLinkScan 
+                                          ? breakdown?.domain_info?.domain || "Link Analysis"
+                                          : scan.products?.product_name || "Scanned Product"}
+                                      </h3>
+                                    </div>
                                     <Badge className={`${config.bgColor} ${config.color} border-0 flex-shrink-0`}>
                                       <VerdictIcon className="h-3 w-3 mr-1" />
                                       {config.label}
                                     </Badge>
                                   </div>
                                   <p className="text-sm text-muted-foreground line-clamp-1">
-                                    {scan.products?.vendor_name || "Unknown vendor"} 
-                                    {scan.products?.source_platform && ` • ${scan.products.source_platform}`}
+                                    {isLinkScan 
+                                      ? (breakdown?.threats_detected?.length 
+                                          ? `${breakdown.threats_detected.length} threat(s) detected`
+                                          : breakdown?.domain_info?.is_trusted ? "Trusted domain" : "Domain analyzed")
+                                      : `${scan.products?.vendor_name || "Unknown vendor"}${scan.products?.source_platform ? ` • ${scan.products.source_platform}` : ""}`}
                                   </p>
                                 </div>
                                 
@@ -264,7 +346,7 @@ export default function ScanHistory() {
                                       {format(new Date(scan.created_at), "MMM d, yyyy")}
                                     </span>
                                   </div>
-                                  {scan.products?.price && (
+                                  {!isLinkScan && scan.products?.price && (
                                     <span className="text-sm font-medium">
                                       KES {scan.products.price.toLocaleString()}
                                     </span>
