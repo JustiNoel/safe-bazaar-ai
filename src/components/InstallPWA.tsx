@@ -19,15 +19,24 @@ const InstallPWA = () => {
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(isIOSDevice);
 
-    // Check if already installed or dismissed
-    const isDismissed = localStorage.getItem("pwa_banner_dismissed");
+    // Check if already installed (standalone mode)
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
     
-    if (isDismissed || isStandalone) return;
+    if (isStandalone) {
+      // Already installed, don't show
+      return;
+    }
+
+    // Check session storage for this session's dismissal
+    const isDismissedThisSession = sessionStorage.getItem("pwa_banner_dismissed_session");
+    
+    if (isDismissedThisSession) {
+      return;
+    }
 
     // For iOS, show manual install instructions
     if (isIOSDevice) {
-      const timer = setTimeout(() => setShowBanner(true), 5000);
+      const timer = setTimeout(() => setShowBanner(true), 3000);
       return () => clearTimeout(timer);
     }
 
@@ -35,11 +44,22 @@ const InstallPWA = () => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setTimeout(() => setShowBanner(true), 5000);
+      setTimeout(() => setShowBanner(true), 3000);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    
+    // Show banner anyway for browsers that support PWA but might not fire the event
+    const fallbackTimer = setTimeout(() => {
+      if (!deferredPrompt) {
+        setShowBanner(true);
+      }
+    }, 5000);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
   const handleInstall = async () => {
@@ -50,12 +70,15 @@ const InstallPWA = () => {
     
     if (outcome === "accepted") {
       setShowBanner(false);
+      // Mark as installed permanently
+      localStorage.setItem("pwa_installed", "true");
     }
     setDeferredPrompt(null);
   };
 
   const handleDismiss = () => {
-    localStorage.setItem("pwa_banner_dismissed", "true");
+    // Only dismiss for this session - will show again on next visit
+    sessionStorage.setItem("pwa_banner_dismissed_session", "true");
     setShowBanner(false);
   };
 
@@ -73,6 +96,7 @@ const InstallPWA = () => {
           <button
             onClick={handleDismiss}
             className="absolute top-2 right-2 p-1 rounded-full hover:bg-muted transition-colors"
+            aria-label="Dismiss"
           >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -93,6 +117,13 @@ const InstallPWA = () => {
                   <Download className="w-4 h-4" />
                   Install App
                 </Button>
+              )}
+              {isIOS && (
+                <div className="text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    Tap <span className="font-medium">Share</span> then <span className="font-medium">"Add to Home Screen"</span>
+                  </span>
+                </div>
               )}
             </div>
           </div>

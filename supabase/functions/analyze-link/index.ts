@@ -39,6 +39,22 @@ const TRUSTED_DOMAINS = [
   "whatsapp.com", "telegram.org", "netflix.com", "spotify.com",
 ];
 
+interface VirusTotalResult {
+  positives: number;
+  total: number;
+  scanDate: string;
+  permalink: string;
+  categories: string[];
+  detectedBy: string[];
+}
+
+interface AIAnalysisResult {
+  model: string;
+  analysis: string;
+  threats: string[];
+  recommendations: string[];
+}
+
 interface LinkAnalysis {
   url: string;
   overall_score: number;
@@ -56,6 +72,8 @@ interface LinkAnalysis {
   ai_analysis: string;
   recommendations: string[];
   kenyan_context: string[];
+  virustotal_result?: VirusTotalResult;
+  multi_ai_analysis?: AIAnalysisResult[];
 }
 
 function extractDomain(url: string): string {
@@ -72,7 +90,6 @@ function checkSuspiciousPatterns(url: string, domain: string): string[] {
   const urlLower = url.toLowerCase();
   const domainLower = domain.toLowerCase();
 
-  // Check for URL shorteners
   for (const pattern of SUSPICIOUS_PATTERNS.domains) {
     if (pattern.test(domainLower)) {
       threats.push("URL shortener detected - may hide malicious destination");
@@ -80,14 +97,12 @@ function checkSuspiciousPatterns(url: string, domain: string): string[] {
     }
   }
 
-  // Check for suspicious keywords
   for (const keyword of SUSPICIOUS_PATTERNS.keywords) {
     if (urlLower.includes(keyword)) {
       threats.push(`Suspicious keyword detected: "${keyword}"`);
     }
   }
 
-  // Check for typosquatting
   for (const pattern of SUSPICIOUS_PATTERNS.typosquatting) {
     if (pattern.test(domainLower)) {
       threats.push("Possible typosquatting attack - domain mimics trusted site");
@@ -95,7 +110,6 @@ function checkSuspiciousPatterns(url: string, domain: string): string[] {
     }
   }
 
-  // Check for suspicious TLDs
   for (const tld of SUSPICIOUS_PATTERNS.tlds) {
     if (domainLower.endsWith(tld)) {
       threats.push(`High-risk domain extension (${tld}) commonly used in scams`);
@@ -103,18 +117,15 @@ function checkSuspiciousPatterns(url: string, domain: string): string[] {
     }
   }
 
-  // Check for IP address instead of domain
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain)) {
     threats.push("IP address used instead of domain name - highly suspicious");
   }
 
-  // Check for excessive subdomains
   const subdomainCount = domain.split(".").length - 2;
   if (subdomainCount > 2) {
     threats.push("Excessive subdomains - potential phishing attempt");
   }
 
-  // Check for numbers replacing letters
   if (/[0-9]/.test(domain) && !TRUSTED_DOMAINS.some(td => domain.includes(td))) {
     const hasLetterReplacement = /[01l][i1l]|[0o]|[3e]|[4a]|[5s]|[7t]|[8b]|[9g]/i.test(domain);
     if (hasLetterReplacement) {
@@ -133,7 +144,6 @@ function checkKenyanContext(url: string, domain: string): string[] {
   const insights: string[] = [];
   const urlLower = url.toLowerCase();
 
-  // M-Pesa specific checks
   if (urlLower.includes("mpesa") || urlLower.includes("m-pesa")) {
     if (!domain.includes("safaricom.co.ke") && !domain.includes("mpesa.co.ke")) {
       insights.push("⚠️ Claims to be M-Pesa but not from official Safaricom domain");
@@ -141,7 +151,6 @@ function checkKenyanContext(url: string, domain: string): string[] {
     }
   }
 
-  // KRA checks
   if (urlLower.includes("kra") || urlLower.includes("itax")) {
     if (!domain.endsWith(".go.ke")) {
       insights.push("⚠️ Claims to be KRA but not a .go.ke government domain");
@@ -149,7 +158,6 @@ function checkKenyanContext(url: string, domain: string): string[] {
     }
   }
 
-  // Banking checks
   const bankPatterns = ["equity", "kcb", "coop", "stanbic", "barclays", "absa", "ncba"];
   for (const bank of bankPatterns) {
     if (urlLower.includes(bank) && !domain.includes(bank)) {
@@ -157,7 +165,6 @@ function checkKenyanContext(url: string, domain: string): string[] {
     }
   }
 
-  // E-commerce checks
   if (urlLower.includes("jumia") && !domain.includes("jumia.co.ke")) {
     insights.push("⚠️ Claims to be Jumia but not from official jumia.co.ke domain");
   }
@@ -166,13 +173,11 @@ function checkKenyanContext(url: string, domain: string): string[] {
     insights.push("⚠️ Claims to be Kilimall but not from official kilimall.co.ke domain");
   }
 
-  // WhatsApp group scams
   if (urlLower.includes("wa.me") || urlLower.includes("chat.whatsapp.com")) {
     insights.push("📱 WhatsApp link detected - verify sender before clicking");
     insights.push("Never share personal info or M-Pesa PINs via WhatsApp");
   }
 
-  // Common Kenyan scam patterns
   if (urlLower.includes("registration-fee") || urlLower.includes("registration_fee")) {
     insights.push("🚨 Mentions registration fee - common scam tactic in Kenya");
   }
@@ -184,6 +189,170 @@ function checkKenyanContext(url: string, domain: string): string[] {
   return insights;
 }
 
+// VirusTotal API integration
+async function checkVirusTotal(url: string): Promise<VirusTotalResult | null> {
+  const VIRUSTOTAL_API_KEY = Deno.env.get("VIRUSTOTAL_API_KEY");
+  
+  if (!VIRUSTOTAL_API_KEY) {
+    console.log("VirusTotal API key not configured");
+    return null;
+  }
+
+  try {
+    // First, submit URL for scanning
+    const scanResponse = await fetch("https://www.virustotal.com/vtapi/v2/url/scan", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `apikey=${VIRUSTOTAL_API_KEY}&url=${encodeURIComponent(url)}`,
+    });
+
+    if (!scanResponse.ok) {
+      console.error("VirusTotal scan request failed:", scanResponse.status);
+      return null;
+    }
+
+    // Wait a moment for scan to process
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Get the report
+    const reportResponse = await fetch(
+      `https://www.virustotal.com/vtapi/v2/url/report?apikey=${VIRUSTOTAL_API_KEY}&resource=${encodeURIComponent(url)}`,
+      { method: "GET" }
+    );
+
+    if (!reportResponse.ok) {
+      console.error("VirusTotal report request failed:", reportResponse.status);
+      return null;
+    }
+
+    const report = await reportResponse.json();
+    
+    if (report.response_code !== 1) {
+      console.log("VirusTotal: URL not yet scanned or no data");
+      return null;
+    }
+
+    const detectedBy: string[] = [];
+    if (report.scans) {
+      for (const [scanner, result] of Object.entries(report.scans)) {
+        if ((result as any).detected) {
+          detectedBy.push(scanner);
+        }
+      }
+    }
+
+    return {
+      positives: report.positives || 0,
+      total: report.total || 0,
+      scanDate: report.scan_date || new Date().toISOString(),
+      permalink: report.permalink || "",
+      categories: report.categories || [],
+      detectedBy,
+    };
+  } catch (error) {
+    console.error("VirusTotal API error:", error);
+    return null;
+  }
+}
+
+// Multi-AI analysis using different models
+async function getMultiAIAnalysis(url: string, domain: string, isTrusted: boolean, threats: string[]): Promise<AIAnalysisResult[]> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const results: AIAnalysisResult[] = [];
+
+  if (!LOVABLE_API_KEY) {
+    return results;
+  }
+
+  const systemPrompt = `You are a cybersecurity expert specializing in link analysis and phishing detection for the Kenyan market. Analyze URLs for potential threats including:
+- Phishing attempts
+- Scam websites
+- Malware distribution
+- Fake login pages
+- Advance fee fraud (common in Kenya)
+- Impersonation of Kenyan services (M-Pesa, Safaricom, KRA, Banks)
+
+Respond in JSON format with:
+{
+  "link_type": "e-commerce|social_media|banking|government|news|file_download|redirect|unknown",
+  "analysis": "Brief 2-3 sentence analysis of the link's safety",
+  "additional_threats": ["array of any additional threats detected"],
+  "recommendations": ["array of safety recommendations"],
+  "history": "Brief history/background about this domain or type of link if known"
+}`;
+
+  const userPrompt = `Analyze this URL for security risks: ${url}
+
+Domain: ${domain}
+Is trusted domain: ${isTrusted}
+Detected threats so far: ${threats.join(", ") || "None"}
+
+Provide comprehensive analysis including any known history about this domain or similar scam patterns.`;
+
+  // Models to use for analysis
+  const models = [
+    { id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash" },
+    { id: "openai/gpt-5-mini", name: "GPT-5 Mini" },
+  ];
+
+  const analysisPromises = models.map(async (model) => {
+    try {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model.id,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.3,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error(`${model.name} analysis failed:`, response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || "";
+      
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return {
+            model: model.name,
+            analysis: parsed.analysis || "",
+            threats: parsed.additional_threats || [],
+            recommendations: parsed.recommendations || [],
+          };
+        }
+      } catch {
+        return {
+          model: model.name,
+          analysis: content.slice(0, 500),
+          threats: [],
+          recommendations: [],
+        };
+      }
+    } catch (error) {
+      console.error(`${model.name} error:`, error);
+      return null;
+    }
+    return null;
+  });
+
+  const analysisResults = await Promise.all(analysisPromises);
+  return analysisResults.filter((r): r is AIAnalysisResult => r !== null);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -192,7 +361,6 @@ serve(async (req) => {
   try {
     const body = await req.json();
     
-    // Validate input
     const validationResult = requestSchema.safeParse(body);
     if (!validationResult.success) {
       return new Response(
@@ -238,11 +406,14 @@ serve(async (req) => {
       }
     }
 
-    // Check scan limits for free users
+    // Check if admin (bypass limits)
+    const isAdmin = userProfile?.is_admin || userProfile?.admin_bypass_limits;
+
+    // Check scan limits for free users (skip for admin)
     let scansUsed = 0;
     let scanLimit = 3;
     
-    if (userProfile && !userProfile.premium) {
+    if (userProfile && !userProfile.premium && !isAdmin) {
       scanLimit = userProfile.scan_limit || 3;
       scansUsed = userProfile.scans_today || 0;
       
@@ -256,7 +427,6 @@ serve(async (req) => {
         );
       }
       
-      // Increment scan count
       scansUsed += 1;
       await supabase
         .from("profiles")
@@ -271,78 +441,49 @@ serve(async (req) => {
     const isShortened = SUSPICIOUS_PATTERNS.domains.some(p => p.test(domain));
     const hasSuspiciousTld = SUSPICIOUS_PATTERNS.tlds.some(tld => domain.endsWith(tld));
 
-    // Call AI for deeper analysis
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    let aiAnalysis = "";
-    let linkType = "Unknown";
+    // Run VirusTotal and Multi-AI analysis in parallel
+    const [virusTotalResult, multiAIResults] = await Promise.all([
+      checkVirusTotal(url),
+      getMultiAIAnalysis(url, domain, isTrusted, threats),
+    ]);
 
-    if (LOVABLE_API_KEY) {
-      try {
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
-            messages: [
-              {
-                role: "system",
-                content: `You are a cybersecurity expert specializing in link analysis and phishing detection for the Kenyan market. Analyze URLs for potential threats including:
-- Phishing attempts
-- Scam websites
-- Malware distribution
-- Fake login pages
-- Advance fee fraud (common in Kenya)
-- Impersonation of Kenyan services (M-Pesa, Safaricom, KRA, Banks)
-
-Respond in JSON format with:
-{
-  "link_type": "e-commerce|social_media|banking|government|news|file_download|redirect|unknown",
-  "analysis": "Brief 2-3 sentence analysis of the link's safety",
-  "additional_threats": ["array of any additional threats detected"],
-  "recommendations": ["array of safety recommendations"]
-}`
-              },
-              {
-                role: "user",
-                content: `Analyze this URL for security risks: ${url}\n\nDomain: ${domain}\nIs trusted domain: ${isTrusted}\nDetected threats so far: ${threats.join(", ") || "None"}`
-              }
-            ],
-            temperature: 0.3,
-          }),
-        });
-
-        if (aiResponse.ok) {
-          const aiData = await aiResponse.json();
-          const content = aiData.choices[0]?.message?.content || "";
-          
-          try {
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              aiAnalysis = parsed.analysis || "";
-              linkType = parsed.link_type || "Unknown";
-              
-              if (parsed.additional_threats && Array.isArray(parsed.additional_threats)) {
-                threats.push(...parsed.additional_threats);
-              }
-            }
-          } catch {
-            aiAnalysis = content.slice(0, 500);
-          }
-        }
-      } catch (err) {
-        console.error("AI analysis error:", err);
+    // Add VirusTotal threats
+    if (virusTotalResult && virusTotalResult.positives > 0) {
+      threats.push(`VirusTotal: ${virusTotalResult.positives}/${virusTotalResult.total} security vendors flagged this URL`);
+      if (virusTotalResult.detectedBy.length > 0) {
+        threats.push(`Detected by: ${virusTotalResult.detectedBy.slice(0, 5).join(", ")}${virusTotalResult.detectedBy.length > 5 ? ` and ${virusTotalResult.detectedBy.length - 5} more` : ""}`);
       }
+    }
+
+    // Aggregate AI analysis
+    let combinedAIAnalysis = "";
+    let linkType = "Unknown";
+    
+    for (const aiResult of multiAIResults) {
+      if (aiResult.analysis) {
+        combinedAIAnalysis += `[${aiResult.model}]: ${aiResult.analysis}\n`;
+      }
+      if (aiResult.threats && aiResult.threats.length > 0) {
+        threats.push(...aiResult.threats);
+      }
+    }
+
+    if (multiAIResults.length > 0 && multiAIResults[0]) {
+      linkType = "analyzed";
     }
 
     // Calculate overall score
     let score = 100;
     
     // Deductions based on threats
-    score -= threats.length * 15;
+    score -= threats.length * 10;
+    
+    // VirusTotal deductions
+    if (virusTotalResult) {
+      if (virusTotalResult.positives > 0) {
+        score -= virusTotalResult.positives * 5;
+      }
+    }
     
     // Deductions based on risk factors
     if (isShortened) score -= 20;
@@ -353,6 +494,11 @@ Respond in JSON format with:
     
     // Bonus for trusted domains
     if (isTrusted) score += 20;
+    
+    // Bonus for clean VirusTotal
+    if (virusTotalResult && virusTotalResult.positives === 0 && virusTotalResult.total > 0) {
+      score += 10;
+    }
     
     // Clamp score
     score = Math.max(0, Math.min(100, score));
@@ -386,6 +532,10 @@ Respond in JSON format with:
       recommendations.push("Use a URL expander service to reveal the actual destination");
     }
     
+    if (virusTotalResult && virusTotalResult.positives > 0) {
+      recommendations.push(`This URL was flagged by ${virusTotalResult.positives} security vendors - exercise extreme caution`);
+    }
+    
     if (verdict === "dangerous") {
       recommendations.push("Report this link to relevant authorities if received via SMS or email");
       recommendations.push("Block the sender if this was sent to you directly");
@@ -398,6 +548,13 @@ Respond in JSON format with:
     
     if (verdict === "safe") {
       recommendations.push("Always double-check the URL before entering sensitive information");
+    }
+
+    // Add AI recommendations
+    for (const aiResult of multiAIResults) {
+      if (aiResult.recommendations) {
+        recommendations.push(...aiResult.recommendations);
+      }
     }
 
     const analysis: LinkAnalysis = {
@@ -413,10 +570,12 @@ Respond in JSON format with:
         suspicious_tld: hasSuspiciousTld,
         age_indicator: isTrusted ? "Established" : "Unknown",
       },
-      threats_detected: [...new Set(threats)], // Remove duplicates
-      ai_analysis: aiAnalysis || "AI analysis not available. Showing pattern-based results.",
-      recommendations,
+      threats_detected: [...new Set(threats)],
+      ai_analysis: combinedAIAnalysis || "Multi-AI analysis completed. Showing combined results.",
+      recommendations: [...new Set(recommendations)],
       kenyan_context: kenyanContext,
+      virustotal_result: virusTotalResult || undefined,
+      multi_ai_analysis: multiAIResults.length > 0 ? multiAIResults : undefined,
     };
 
     // Store the link scan
@@ -429,6 +588,8 @@ Respond in JSON format with:
         threats_detected: analysis.threats_detected,
         domain_info: analysis.domain_info,
         kenyan_context: analysis.kenyan_context,
+        virustotal: virusTotalResult,
+        multi_ai: multiAIResults,
       },
       alternatives: [],
       is_guest: !userId,
@@ -438,9 +599,9 @@ Respond in JSON format with:
       JSON.stringify({
         success: true,
         analysis,
-        scansUsed: userProfile && !userProfile.premium ? scansUsed : null,
-        scanLimit: userProfile && !userProfile.premium ? scanLimit : null,
-        isPremium: userProfile?.premium || false,
+        scansUsed: userProfile && !userProfile.premium && !isAdmin ? scansUsed : null,
+        scanLimit: userProfile && !userProfile.premium && !isAdmin ? scanLimit : null,
+        isPremium: userProfile?.premium || isAdmin || false,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

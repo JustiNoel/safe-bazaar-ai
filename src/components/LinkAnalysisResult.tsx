@@ -19,6 +19,22 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import CircularGauge from "./CircularGauge";
 
+interface VirusTotalResult {
+  positives: number;
+  total: number;
+  scanDate: string;
+  permalink: string;
+  categories: string[];
+  detectedBy: string[];
+}
+
+interface AIAnalysisResult {
+  model: string;
+  analysis: string;
+  threats: string[];
+  recommendations: string[];
+}
+
 interface LinkAnalysis {
   url: string;
   overall_score: number;
@@ -36,6 +52,8 @@ interface LinkAnalysis {
   ai_analysis: string;
   recommendations: string[];
   kenyan_context: string[];
+  virustotal_result?: VirusTotalResult;
+  multi_ai_analysis?: AIAnalysisResult[];
 }
 
 interface LinkAnalysisResultProps {
@@ -237,17 +255,93 @@ export default function LinkAnalysisResult({ analysis, onNewScan }: LinkAnalysis
         </Card>
       )}
 
-      {/* AI Analysis */}
+      {/* VirusTotal Results */}
+      {analysis.virustotal_result && (
+        <Card className={analysis.virustotal_result.positives > 0 ? "border-destructive/30" : "border-success/30"}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              VirusTotal Scan Results
+            </CardTitle>
+            <CardDescription>
+              Scanned by {analysis.virustotal_result.total} security vendors
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4 mb-4">
+              <div className={`text-3xl font-bold ${analysis.virustotal_result.positives > 0 ? "text-destructive" : "text-success"}`}>
+                {analysis.virustotal_result.positives}/{analysis.virustotal_result.total}
+              </div>
+              <div className="flex-1">
+                <Progress 
+                  value={(analysis.virustotal_result.positives / analysis.virustotal_result.total) * 100} 
+                  className={analysis.virustotal_result.positives > 0 ? "bg-destructive/20" : "bg-success/20"}
+                />
+              </div>
+              <Badge variant={analysis.virustotal_result.positives > 0 ? "destructive" : "outline"}>
+                {analysis.virustotal_result.positives > 0 ? "Flagged" : "Clean"}
+              </Badge>
+            </div>
+            {analysis.virustotal_result.detectedBy.length > 0 && (
+              <div className="mt-3">
+                <p className="text-sm text-muted-foreground mb-2">Detected by:</p>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.virustotal_result.detectedBy.slice(0, 10).map((vendor, i) => (
+                    <Badge key={i} variant="destructive" className="text-xs">
+                      {vendor}
+                    </Badge>
+                  ))}
+                  {analysis.virustotal_result.detectedBy.length > 10 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{analysis.virustotal_result.detectedBy.length - 10} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-3">
+              Last scanned: {new Date(analysis.virustotal_result.scanDate).toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Multi-AI Analysis */}
+      {analysis.multi_ai_analysis && analysis.multi_ai_analysis.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              Multi-AI Analysis
+            </CardTitle>
+            <CardDescription>
+              Analysis from multiple AI models for accuracy
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {analysis.multi_ai_analysis.map((aiResult, index) => (
+              <div key={index} className="p-4 rounded-lg bg-muted/30 border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="secondary">{aiResult.model}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{aiResult.analysis}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI Analysis (Combined) */}
       {analysis.ai_analysis && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              AI Analysis
+              AI Analysis Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
               {analysis.ai_analysis}
             </p>
           </CardContent>
