@@ -1,4 +1,4 @@
-import { Shield, Menu, X, History, User, LogOut } from "lucide-react";
+import { Shield, Menu, X, History, User, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, memo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -112,6 +112,14 @@ const Navigation = memo(() => {
                       <Link to="/seller">
                         <User className="h-4 w-4 mr-2" />
                         Seller Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {(user?.profile?.is_admin || user?.email === "justinoel254@gmail.com") && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Admin Panel
                       </Link>
                     </DropdownMenuItem>
                   )}

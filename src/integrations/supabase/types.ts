@@ -196,6 +196,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_bypass_limits: boolean | null
           api_calls_today: number | null
           api_key: string | null
           banned: boolean
@@ -206,6 +207,7 @@ export type Database = {
           email_preferences: Json | null
           fcm_token: string | null
           id: string
+          is_admin: boolean | null
           last_scan_reset: string | null
           phone: string | null
           premium: boolean
@@ -216,6 +218,12 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           scan_limit: number
           scans_today: number
+          seller_email: string | null
+          seller_location: string | null
+          seller_national_id: string | null
+          seller_product_image: string | null
+          seller_product_name: string | null
+          seller_product_price: number | null
           seller_verified: boolean | null
           subscription_tier: string | null
           updated_at: string
@@ -223,6 +231,7 @@ export type Database = {
           voice_readout_enabled: boolean | null
         }
         Insert: {
+          admin_bypass_limits?: boolean | null
           api_calls_today?: number | null
           api_key?: string | null
           banned?: boolean
@@ -233,6 +242,7 @@ export type Database = {
           email_preferences?: Json | null
           fcm_token?: string | null
           id?: string
+          is_admin?: boolean | null
           last_scan_reset?: string | null
           phone?: string | null
           premium?: boolean
@@ -243,6 +253,12 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           scan_limit?: number
           scans_today?: number
+          seller_email?: string | null
+          seller_location?: string | null
+          seller_national_id?: string | null
+          seller_product_image?: string | null
+          seller_product_name?: string | null
+          seller_product_price?: number | null
           seller_verified?: boolean | null
           subscription_tier?: string | null
           updated_at?: string
@@ -250,6 +266,7 @@ export type Database = {
           voice_readout_enabled?: boolean | null
         }
         Update: {
+          admin_bypass_limits?: boolean | null
           api_calls_today?: number | null
           api_key?: string | null
           banned?: boolean
@@ -260,6 +277,7 @@ export type Database = {
           email_preferences?: Json | null
           fcm_token?: string | null
           id?: string
+          is_admin?: boolean | null
           last_scan_reset?: string | null
           phone?: string | null
           premium?: boolean
@@ -270,6 +288,12 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           scan_limit?: number
           scans_today?: number
+          seller_email?: string | null
+          seller_location?: string | null
+          seller_national_id?: string | null
+          seller_product_image?: string | null
+          seller_product_name?: string | null
+          seller_product_price?: number | null
           seller_verified?: boolean | null
           subscription_tier?: string | null
           updated_at?: string

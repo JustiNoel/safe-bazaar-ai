@@ -22,6 +22,8 @@ export interface UserProfile {
   referral_code?: string;
   referral_count?: number;
   bonus_scans?: number;
+  is_admin?: boolean;
+  admin_bypass_limits?: boolean;
 }
 
 export interface SubscriptionStatus {

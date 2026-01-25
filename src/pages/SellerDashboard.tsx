@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, TrendingUp, Upload, CheckCircle, AlertCircle } from "lucide-react";
+import { Crown, TrendingUp, Upload, CheckCircle, AlertCircle, Settings } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import SellerProfileForm from "@/components/SellerProfileForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -137,79 +139,99 @@ const SellerDashboard = () => {
               </div>
             </Card>
 
-            {/* Recent Products */}
-            <Card className="p-6 shadow-medium">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Recent Products</h2>
-                <Button variant="outline">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload New Product
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {recentProducts.map((product, index) => (
-                  <Card key={index} className="p-4 hover:shadow-medium transition-shadow">
-                    <div className="space-y-3">
-                      <div className="w-full h-32 bg-muted rounded-lg flex items-center justify-center">
-                        <img src={product.image} alt={product.name} className="max-h-full max-w-full object-cover" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{product.name}</h3>
-                        <p className="text-sm text-muted-foreground">{product.uploaded}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Trust Score</span>
-                          <span className="font-medium">{product.trust_score}/100</span>
-                        </div>
-                        <Progress value={product.trust_score} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {product.status === "Verified" ? (
-                          <CheckCircle className="w-4 h-4 text-success" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-warning" />
-                        )}
-                        <span className="text-sm">{product.status}</span>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </Card>
+            {/* Tabs for Dashboard and Profile */}
+            <Tabs defaultValue="dashboard" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="dashboard">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="profile">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Update Profile
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Improvement Tips */}
-            <Card className="p-6 shadow-medium">
-              <h2 className="text-2xl font-bold mb-6">
-                <TrendingUp className="inline-block w-6 h-6 mr-2 text-primary" />
-                Boost Your Trust Score
-              </h2>
-              <div className="space-y-4">
-                {improvementTips.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div>
-                      <div className="font-semibold">{item.tip}</div>
-                      <div className="text-sm text-success">{item.impact}</div>
-                    </div>
-                    <Button variant="outline" size="sm">{item.action}</Button>
-                  </div>
-                ))}
-              </div>
-              {!user?.profile?.premium && (
-                <div className="mt-6 p-4 bg-gradient-primary rounded-lg text-primary-foreground">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-bold mb-1">Premium Seller: KES 500/month</div>
-                      <div className="text-sm opacity-90">Get auto-optimizations, priority support & advanced analytics</div>
-                    </div>
-                    <Button variant="secondary" size="sm">
-                      <Crown className="w-4 h-4 mr-2" />
-                      Upgrade
+              <TabsContent value="dashboard" className="space-y-8">
+                {/* Recent Products */}
+                <Card className="p-6 shadow-medium">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">Recent Products</h2>
+                    <Button variant="outline">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload New Product
                     </Button>
                   </div>
-                </div>
-              )}
-            </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {recentProducts.map((product, index) => (
+                      <Card key={index} className="p-4 hover:shadow-medium transition-shadow">
+                        <div className="space-y-3">
+                          <div className="w-full h-32 bg-muted rounded-lg flex items-center justify-center">
+                            <img src={product.image} alt={product.name} className="max-h-full max-w-full object-cover" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">{product.name}</h3>
+                            <p className="text-sm text-muted-foreground">{product.uploaded}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Trust Score</span>
+                              <span className="font-medium">{product.trust_score}/100</span>
+                            </div>
+                            <Progress value={product.trust_score} />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {product.status === "Verified" ? (
+                              <CheckCircle className="w-4 h-4 text-success" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-warning" />
+                            )}
+                            <span className="text-sm">{product.status}</span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Improvement Tips */}
+                <Card className="p-6 shadow-medium">
+                  <h2 className="text-2xl font-bold mb-6">
+                    <TrendingUp className="inline-block w-6 h-6 mr-2 text-primary" />
+                    Boost Your Trust Score
+                  </h2>
+                  <div className="space-y-4">
+                    {improvementTips.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <div className="font-semibold">{item.tip}</div>
+                          <div className="text-sm text-success">{item.impact}</div>
+                        </div>
+                        <Button variant="outline" size="sm">{item.action}</Button>
+                      </div>
+                    ))}
+                  </div>
+                  {!user?.profile?.premium && (
+                    <div className="mt-6 p-4 bg-gradient-primary rounded-lg text-primary-foreground">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-bold mb-1">Premium Seller: KES 500/month</div>
+                          <div className="text-sm opacity-90">Get auto-optimizations, priority support & advanced analytics</div>
+                        </div>
+                        <Button variant="secondary" size="sm">
+                          <Crown className="w-4 h-4 mr-2" />
+                          Upgrade
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="profile">
+                <SellerProfileForm />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </main>
