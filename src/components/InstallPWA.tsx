@@ -23,7 +23,6 @@ const InstallPWA = () => {
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
     
     if (isStandalone) {
-      // Already installed, don't show
       return;
     }
 
@@ -36,7 +35,7 @@ const InstallPWA = () => {
 
     // For iOS, show manual install instructions
     if (isIOSDevice) {
-      const timer = setTimeout(() => setShowBanner(true), 3000);
+      const timer = setTimeout(() => setShowBanner(true), 2000);
       return () => clearTimeout(timer);
     }
 
@@ -44,17 +43,15 @@ const InstallPWA = () => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setTimeout(() => setShowBanner(true), 3000);
+      setTimeout(() => setShowBanner(true), 2000);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     
-    // Show banner anyway for browsers that support PWA but might not fire the event
+    // Show banner anyway for browsers that support PWA
     const fallbackTimer = setTimeout(() => {
-      if (!deferredPrompt) {
-        setShowBanner(true);
-      }
-    }, 5000);
+      setShowBanner(true);
+    }, 3000);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -63,21 +60,23 @@ const InstallPWA = () => {
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      // Fallback for browsers without beforeinstallprompt
+      window.open(window.location.href, '_blank');
+      return;
+    }
 
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     
     if (outcome === "accepted") {
       setShowBanner(false);
-      // Mark as installed permanently
       localStorage.setItem("pwa_installed", "true");
     }
     setDeferredPrompt(null);
   };
 
   const handleDismiss = () => {
-    // Only dismiss for this session - will show again on next visit
     sessionStorage.setItem("pwa_banner_dismissed_session", "true");
     setShowBanner(false);
   };
@@ -109,20 +108,28 @@ const InstallPWA = () => {
               <h3 className="font-semibold mb-1">Install Safe Bazaar AI</h3>
               <p className="text-sm text-muted-foreground mb-3">
                 {isIOS 
-                  ? "Tap Share → 'Add to Home Screen' for the best experience!"
+                  ? "Add to your home screen for the best experience!"
                   : "Install our app for faster access and offline support."}
               </p>
-              {!isIOS && deferredPrompt && (
-                <Button size="sm" className="gap-2" onClick={handleInstall}>
-                  <Download className="w-4 h-4" />
-                  Install App
-                </Button>
-              )}
+              
+              {/* Always show download button */}
+              <Button 
+                size="sm" 
+                className="gap-2 w-full" 
+                onClick={isIOS ? undefined : handleInstall}
+              >
+                <Download className="w-4 h-4" />
+                {isIOS ? "How to Install" : "Install App"}
+              </Button>
+              
               {isIOS && (
-                <div className="text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    Tap <span className="font-medium">Share</span> then <span className="font-medium">"Add to Home Screen"</span>
-                  </span>
+                <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-1">Steps to install:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Tap the Share button <span className="font-medium">⬆️</span></li>
+                    <li>Select "Add to Home Screen"</li>
+                    <li>Tap "Add" to confirm</li>
+                  </ol>
                 </div>
               )}
             </div>

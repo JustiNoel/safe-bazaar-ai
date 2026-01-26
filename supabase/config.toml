@@ -62,3 +62,9 @@ verify_jwt = false
 
 [functions.send-exec-invite]
 verify_jwt = false
+
+[functions.admin-ai-assistant]
+verify_jwt = false
+
+[functions.analyze-image]
+verify_jwt = false

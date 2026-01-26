@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Upload, Link as LinkIcon, Camera, AlertCircle, Loader2, Shield } from "lucide-react";
+import { Upload, Link as LinkIcon, Camera, AlertCircle, Loader2, Shield, Image as ImageIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import ScanningAnimation from "@/components/ScanningAnimation";
 import ReferralCard from "@/components/ReferralCard";
 import AIAssistant from "@/components/AIAssistant";
 import LinkAnalysisResult from "@/components/LinkAnalysisResult";
+import ImageAnalysisResult from "@/components/ImageAnalysisResult";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,8 +36,12 @@ const Scan = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [assessmentData, setAssessmentData] = useState<any>(null);
   const [linkAnalysisData, setLinkAnalysisData] = useState<any>(null);
-  const [scanMode, setScanMode] = useState<"product" | "link">("product");
+  const [imageAnalysisData, setImageAnalysisData] = useState<any>(null);
+  const [scanMode, setScanMode] = useState<"product" | "link" | "image">("product");
   const [linkUrl, setLinkUrl] = useState("");
+  const [analysisImageUrl, setAnalysisImageUrl] = useState("");
+  const [analysisImageFile, setAnalysisImageFile] = useState<File | null>(null);
+  const [analysisImagePreview, setAnalysisImagePreview] = useState<string>("");
   const [scanStats, setScanStats] = useState({ scansUsed: 0, scanLimit: 3, nextResetTime: "12:00 AM EAT", isLimitReached: false });
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,9 +58,31 @@ const Scan = () => {
     }
   };
 
+  const handleAnalysisImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("File size must be less than 10MB");
+        return;
+      }
+      setAnalysisImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAnalysisImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      toast.success("Image loaded for analysis");
+    }
+  };
+
   const handleAnalyze = async () => {
     if (scanMode === "link") {
       await handleLinkAnalysis();
+      return;
+    }
+    
+    if (scanMode === "image") {
+      await handleImageAnalysis();
       return;
     }
     
@@ -150,15 +177,59 @@ const Scan = () => {
     }
   };
 
+  const handleImageAnalysis = async () => {
+    if (!analysisImagePreview && !analysisImageUrl) {
+      toast.error("Please upload an image or enter an image URL");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-image', {
+        body: { 
+          imageData: analysisImagePreview || undefined,
+          imageUrl: analysisImageUrl || undefined
+        }
+      });
+
+      if (error) {
+        if (error.message.includes("limit")) {
+          setScanStats(prev => ({ ...prev, isLimitReached: true }));
+          setShowScanLimitModal(true);
+          return;
+        }
+        throw error;
+      }
+
+      setImageAnalysisData(data.analysis);
+      setShowResults(true);
+      toast.success("Image analysis complete!");
+      
+      if (data.analysis.verdict === "legitimate") {
+        setTimeout(() => { triggerConfetti(); triggerSuccess(); }, 300);
+      }
+    } catch (error: any) {
+      console.error("Image analysis error:", error);
+      toast.error(error.message || "Image analysis failed. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const resetScan = () => {
     setImageUrl("");
     setProductUrl("");
     setLinkUrl("");
+    setAnalysisImageUrl("");
+    setAnalysisImagePreview("");
+    setAnalysisImageFile(null);
     setProductInfo({ name: "", vendor: "", price: "", platform: "" });
     setUploadedFile(null);
     setShowResults(false);
     setAssessmentData(null);
     setLinkAnalysisData(null);
+    setImageAnalysisData(null);
   };
 
   return (
@@ -171,16 +242,19 @@ const Scan = () => {
           {!showResults ? (
             <div className="animate-fade-in">
               <div className="text-center mb-12">
-                <h1 className="text-3xl md:text-4xl font-bold mb-4">Scan Products & Links</h1>
-                <p className="text-lg text-muted-foreground">Upload product images, paste URLs, or analyze any link for scams and phishing</p>
+                <h1 className="text-3xl md:text-4xl font-bold mb-4">Scan Products, Links & Images</h1>
+                <p className="text-lg text-muted-foreground">Upload product images, paste URLs, analyze links for scams, or verify image authenticity</p>
                 
                 {/* Mode Toggle */}
-                <div className="flex justify-center gap-2 mt-6">
+                <div className="flex justify-center gap-2 mt-6 flex-wrap">
                   <Button variant={scanMode === "product" ? "default" : "outline"} onClick={() => setScanMode("product")}>
                     <Camera className="w-4 h-4 mr-2" />Product Scan
                   </Button>
                   <Button variant={scanMode === "link" ? "default" : "outline"} onClick={() => setScanMode("link")}>
                     <Shield className="w-4 h-4 mr-2" />Link Analysis
+                  </Button>
+                  <Button variant={scanMode === "image" ? "default" : "outline"} onClick={() => setScanMode("image")}>
+                    <ImageIcon className="w-4 h-4 mr-2" />Image Verify
                   </Button>
                 </div>
                 
@@ -194,7 +268,69 @@ const Scan = () => {
                 )}
               </div>
 
-              {scanMode === "link" ? (
+              {scanMode === "image" ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <Card className="p-6 md:p-8 shadow-medium">
+                      <div className="space-y-6">
+                        <div className="text-center">
+                          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                            <ImageIcon className="w-8 h-8 text-primary" />
+                          </div>
+                          <h2 className="text-xl font-semibold mb-2">Image Authenticity Checker</h2>
+                          <p className="text-muted-foreground text-sm">Upload any image to check if it's original, cloned, manipulated, or a stock photo</p>
+                        </div>
+                        
+                        <Tabs defaultValue="upload" className="w-full">
+                          <TabsList className="grid w-full grid-cols-2 mb-4">
+                            <TabsTrigger value="upload"><Upload className="w-4 h-4 mr-2" />Upload Image</TabsTrigger>
+                            <TabsTrigger value="url"><LinkIcon className="w-4 h-4 mr-2" />Image URL</TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="upload" className="space-y-4">
+                            <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors">
+                              <input type="file" id="analysis-image-upload" className="hidden" accept="image/*" onChange={handleAnalysisImageUpload} />
+                              <label htmlFor="analysis-image-upload" className="cursor-pointer">
+                                <div className="flex flex-col items-center gap-4">
+                                  {analysisImagePreview ? (
+                                    <img src={analysisImagePreview} alt="Preview" className="w-32 h-32 object-cover rounded-lg" />
+                                  ) : (
+                                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                                      <Upload className="w-8 h-8 text-primary" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="text-lg font-medium">{analysisImagePreview ? "Change image" : "Upload image to verify"}</p>
+                                    <p className="text-sm text-muted-foreground mt-1">Check for cloning, manipulation, or stock photos</p>
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="url" className="space-y-4">
+                            <div>
+                              <Label htmlFor="analysis-image-url" className="mb-2 block">Image URL</Label>
+                              <Input 
+                                id="analysis-image-url" 
+                                type="url" 
+                                placeholder="https://example.com/image.jpg" 
+                                value={analysisImageUrl} 
+                                onChange={(e) => setAnalysisImageUrl(e.target.value)} 
+                              />
+                            </div>
+                          </TabsContent>
+                        </Tabs>
+                        
+                        <Button onClick={handleAnalyze} disabled={isAnalyzing || (!analysisImagePreview && !analysisImageUrl)} className="w-full" size="lg">
+                          {isAnalyzing ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Analyzing Image...</> : "Verify Image Authenticity"}
+                        </Button>
+                      </div>
+                    </Card>
+                  </div>
+                  {isAuthenticated && <div className="lg:col-span-1"><ReferralCard /></div>}
+                </div>
+              ) : scanMode === "link" ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2">
                     <Card className="p-6 md:p-8 shadow-medium">
@@ -272,6 +408,8 @@ const Scan = () => {
                 </div>
               )}
             </div>
+          ) : scanMode === "image" && imageAnalysisData ? (
+            <ImageAnalysisResult analysis={imageAnalysisData} onNewScan={resetScan} imagePreview={analysisImagePreview || analysisImageUrl} />
           ) : scanMode === "link" && linkAnalysisData ? (
             <LinkAnalysisResult analysis={linkAnalysisData} onNewScan={resetScan} />
           ) : (
