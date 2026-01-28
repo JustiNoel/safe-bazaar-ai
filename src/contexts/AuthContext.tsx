@@ -24,6 +24,13 @@ export interface UserProfile {
   bonus_scans?: number;
   is_admin?: boolean;
   admin_bypass_limits?: boolean;
+  // Seller fields
+  seller_product_image?: string | null;
+  seller_product_name?: string | null;
+  seller_product_price?: number | null;
+  seller_location?: string | null;
+  seller_national_id?: string | null;
+  seller_email?: string | null;
 }
 
 export interface SubscriptionStatus {
