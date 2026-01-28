@@ -19,7 +19,8 @@ import {
   UserPlus,
   Search,
   Mail,
-  Phone
+  Phone,
+  Store
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import KenyaHeatmap from "@/components/KenyaHeatmap";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import ExecMemberManagement from "@/components/ExecMemberManagement";
+import AdminSellersTab from "@/components/AdminSellersTab";
+import AdminAIAssistant from "@/components/AdminAIAssistant";
 
 interface DashboardStats {
   totalUsers: number;
@@ -641,10 +644,10 @@ export default function Admin() {
           <KenyaHeatmap />
         </div>
 
-        {/* Tabs for detailed views */}
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-5">
+          <TabsList className="grid w-full max-w-3xl grid-cols-6">
             <TabsTrigger value="users">All Users</TabsTrigger>
+            <TabsTrigger value="sellers">Sellers</TabsTrigger>
             <TabsTrigger value="team">Exec Team</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="scans">Recent Scans</TabsTrigger>
@@ -829,6 +832,10 @@ export default function Admin() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="sellers">
+            <AdminSellersTab />
           </TabsContent>
 
           <TabsContent value="team">
@@ -1042,6 +1049,9 @@ export default function Admin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Admin AI Assistant */}
+      <AdminAIAssistant context="admin_dashboard" />
     </div>
   );
 }

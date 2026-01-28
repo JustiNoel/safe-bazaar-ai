@@ -20,6 +20,7 @@ import BulkScan from "./pages/BulkScan";
 import SellerAnalytics from "./pages/SellerAnalytics";
 import WelcomeModal from "./components/WelcomeModal";
 import InstallPWA from "./components/InstallPWA";
+import RealtimeNotificationProvider from "./components/RealtimeNotificationProvider";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <RealtimeNotificationProvider />
           <WelcomeModal />
           <InstallPWA />
           <AnimatedRoutes />

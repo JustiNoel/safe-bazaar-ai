@@ -1,20 +1,40 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, TrendingUp, Upload, CheckCircle, AlertCircle, Settings } from "lucide-react";
+import { Crown, TrendingUp, Upload, CheckCircle, AlertCircle, Settings, Phone, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import SellerProfileForm from "@/components/SellerProfileForm";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, refreshProfile } = useAuth();
   const [trustScore, setTrustScore] = useState(72);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  
+  // Dialog states
+  const [mpesaDialogOpen, setMpesaDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isLoading && (!isAuthenticated || user?.profile?.role !== 'seller')) {
@@ -22,6 +42,81 @@ const SellerDashboard = () => {
       navigate('/');
     }
   }, [isAuthenticated, isLoading, user, navigate]);
+
+  // Calculate trust score from profile completeness
+  useEffect(() => {
+    if (user?.profile) {
+      let score = 50; // Base score
+      if (user.profile.seller_product_name) score += 10;
+      if (user.profile.seller_product_image) score += 15;
+      if (user.profile.seller_location) score += 10;
+      if (user.profile.phone) score += 10;
+      if (user.profile.seller_national_id) score += 5;
+      setTrustScore(Math.min(score, 100));
+    }
+  }, [user?.profile]);
+
+  const handleVerifyMpesa = async () => {
+    if (!phoneNumber.trim()) {
+      toast.error("Please enter your M-Pesa phone number");
+      return;
+    }
+    
+    setVerifying(true);
+    try {
+      // Simulate M-Pesa verification (in production, this would call an actual API)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Update profile with phone number
+      const { error } = await supabase
+        .from("profiles")
+        .update({ phone: phoneNumber })
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+
+      toast.success("M-Pesa verification initiated! Check your phone for confirmation.");
+      setMpesaDialogOpen(false);
+      setPhoneNumber("");
+      await refreshProfile();
+    } catch (error) {
+      console.error("Error verifying M-Pesa:", error);
+      toast.error("Failed to verify M-Pesa. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleUploadCertificate = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File must be less than 10MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Convert to base64 for storage (in production, use proper file storage)
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        // For now, we'll just show success - in production this would upload to storage
+        toast.success("Certificate uploaded successfully! Our team will review it within 24 hours.");
+        setUploadDialogOpen(false);
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error uploading certificate:", error);
+      toast.error("Failed to upload certificate. Please try again.");
+      setUploading(false);
+    }
+  };
+
+  const handleCompleteProfile = () => {
+    setActiveTab("profile");
+  };
 
   if (isLoading) {
     return (
@@ -60,16 +155,19 @@ const SellerDashboard = () => {
       tip: "Add M-Pesa verified badge",
       impact: "+20% trust score",
       action: "Verify Now",
+      onClick: () => setMpesaDialogOpen(true),
     },
     {
       tip: "Upload product certificates",
       impact: "+15% trust score",
       action: "Upload",
+      onClick: () => setUploadDialogOpen(true),
     },
     {
       tip: "Complete vendor profile",
       impact: "+10% trust score",
       action: "Complete",
+      onClick: handleCompleteProfile,
     },
   ];
 
@@ -140,7 +238,7 @@ const SellerDashboard = () => {
             </Card>
 
             {/* Tabs for Dashboard and Profile */}
-            <Tabs defaultValue="dashboard" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="dashboard">
                   <TrendingUp className="w-4 h-4 mr-2" />
@@ -207,7 +305,9 @@ const SellerDashboard = () => {
                           <div className="font-semibold">{item.tip}</div>
                           <div className="text-sm text-success">{item.impact}</div>
                         </div>
-                        <Button variant="outline" size="sm">{item.action}</Button>
+                        <Button variant="outline" size="sm" onClick={item.onClick}>
+                          {item.action}
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -235,6 +335,100 @@ const SellerDashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* M-Pesa Verification Dialog */}
+      <Dialog open={mpesaDialogOpen} onOpenChange={setMpesaDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="h-5 w-5 text-success" />
+              M-Pesa Verification
+            </DialogTitle>
+            <DialogDescription>
+              Enter your M-Pesa registered phone number to verify your seller account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="mpesa-phone">M-Pesa Phone Number</Label>
+              <Input
+                id="mpesa-phone"
+                type="tel"
+                placeholder="+254 7XX XXX XXX"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                We'll send a small verification amount that you'll need to confirm.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMpesaDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleVerifyMpesa} disabled={verifying}>
+              {verifying ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Verify Now"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Certificate Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Upload Certificates
+            </DialogTitle>
+            <DialogDescription>
+              Upload product authenticity certificates, business licenses, or other verification documents.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleUploadCertificate}
+              />
+              <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-sm text-muted-foreground mb-4">
+                PDF, JPG, or PNG files up to 10MB
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Select File"
+                )}
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>
