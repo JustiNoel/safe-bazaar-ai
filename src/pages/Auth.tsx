@@ -393,6 +393,8 @@ const Auth = () => {
                 </motion.form>
               </TabsContent>
             </Tabs>
+            </>
+            )}
           </Card>
         </motion.div>
       </div>

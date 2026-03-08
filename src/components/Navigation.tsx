@@ -102,6 +102,12 @@ const Navigation = memo(() => {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
+                    <Link to="/profile">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Profile & Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/history">
                       <History className="h-4 w-4 mr-2" />
                       Scan History

@@ -8,6 +8,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import Index from "./pages/Index";
 import Scan from "./pages/Scan";
 import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
+import ResetPassword from "./pages/ResetPassword";
+import About from "./pages/About";
 import SellerDashboard from "./pages/SellerDashboard";
 import ScanHistory from "./pages/ScanHistory";
 import Admin from "./pages/Admin";
@@ -21,6 +24,8 @@ import SellerAnalytics from "./pages/SellerAnalytics";
 import WelcomeModal from "./components/WelcomeModal";
 import InstallPWA from "./components/InstallPWA";
 import RealtimeNotificationProvider from "./components/RealtimeNotificationProvider";
+import ErrorBoundary from "./components/ErrorBoundary";
+import OnboardingTour from "./components/OnboardingTour";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +52,9 @@ const AnimatedRoutes = () => {
           <Route path="/" element={<Index />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/about" element={<About />} />
           <Route path="/seller" element={<SellerDashboard />} />
           <Route path="/history" element={<ScanHistory />} />
           <Route path="/admin" element={<Admin />} />
@@ -67,14 +75,17 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <RealtimeNotificationProvider />
-          <WelcomeModal />
-          <InstallPWA />
-          <AnimatedRoutes />
-        </BrowserRouter>
+        <ErrorBoundary>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <RealtimeNotificationProvider />
+            <WelcomeModal />
+            <InstallPWA />
+            <OnboardingTour />
+            <AnimatedRoutes />
+          </BrowserRouter>
+        </ErrorBoundary>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
