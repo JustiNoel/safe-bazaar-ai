@@ -10,9 +10,11 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import Navigation from '@/components/Navigation';
 import ShieldMascot from '@/components/ShieldMascot';
 import { toast } from 'sonner';
+import { Mail, Loader2 } from 'lucide-react';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -20,6 +22,11 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [showVerifyEmail, setShowVerifyEmail] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -51,7 +58,27 @@ const Auth = () => {
     setIsLoading(true);
     try {
       await signup(signupData.email, signupData.password, signupData.phone, signupData.role);
-      navigate('/scan');
+      setSignupEmail(signupData.email);
+      setShowVerifyEmail(true);
+    } catch {
+      // error handled in AuthContext
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setForgotSent(true);
+      toast.success('Password reset email sent!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send reset email');
     } finally {
       setIsLoading(false);
     }
