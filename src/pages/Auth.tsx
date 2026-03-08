@@ -115,6 +115,65 @@ const Auth = () => {
           className="w-full max-w-md"
         >
           <Card className="p-8 overflow-hidden">
+            {/* Email Verification Notice */}
+            {showVerifyEmail ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center space-y-4 py-4"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Mail className="h-8 w-8 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold">Check Your Email</h2>
+                <p className="text-muted-foreground text-sm">
+                  We've sent a verification link to <strong>{signupEmail}</strong>. 
+                  Please verify your email before logging in.
+                </p>
+                <Button variant="outline" onClick={() => { setShowVerifyEmail(false); setActiveTab('login'); }}>
+                  Back to Login
+                </Button>
+              </motion.div>
+            ) : showForgotPassword ? (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="space-y-4"
+              >
+                <div className="text-center mb-4">
+                  <h2 className="text-2xl font-bold">Reset Password</h2>
+                  <p className="text-muted-foreground text-sm mt-1">Enter your email to receive a reset link</p>
+                </div>
+                {forgotSent ? (
+                  <Alert>
+                    <Mail className="h-4 w-4" />
+                    <AlertDescription>
+                      Check your email for the reset link. It may take a minute.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div>
+                      <Label htmlFor="forgot-email">Email</Label>
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...</> : 'Send Reset Link'}
+                    </Button>
+                  </form>
+                )}
+                <Button variant="ghost" className="w-full" onClick={() => { setShowForgotPassword(false); setForgotSent(false); }}>
+                  Back to Login
+                </Button>
+              </motion.div>
+            ) : (
+            <>
             {/* Animated Shield Mascot */}
             <motion.div
               key={activeTab}
@@ -185,6 +244,13 @@ const Auth = () => {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Logging in...' : 'Login'}
                   </Button>
+                  <button
+                    type="button"
+                    className="text-sm text-primary hover:underline w-full text-right"
+                    onClick={() => setShowForgotPassword(true)}
+                  >
+                    Forgot password?
+                  </button>
                   
                   <div className="relative my-4">
                     <Separator />
