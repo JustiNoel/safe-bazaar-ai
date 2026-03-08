@@ -71,22 +71,38 @@ const SellerProfileForm = () => {
     fetchProfile();
   }, [user]);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image must be less than 5MB");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setImagePreview(base64);
-        setFormData(prev => ({ ...prev, seller_product_image: base64 }));
-      };
-      reader.readAsDataURL(file);
+    if (!file || !user?.id) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
+      return;
     }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    // Upload to storage bucket
+    const filePath = `${user.id}/${Date.now()}-${file.name}`;
+    const { data, error } = await supabase.storage
+      .from("seller-uploads")
+      .upload(filePath, file, { upsert: true });
+
+    if (error) {
+      toast.error("Failed to upload image");
+      console.error(error);
+      return;
+    }
+
+    const { data: publicUrl } = supabase.storage
+      .from("seller-uploads")
+      .getPublicUrl(data.path);
+
+    setFormData(prev => ({ ...prev, seller_product_image: publicUrl.publicUrl }));
+    toast.success("Image uploaded!");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

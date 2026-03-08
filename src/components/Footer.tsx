@@ -55,6 +55,11 @@ const Footer = () => {
                     Premium Features
                   </a>
                 </li>
+                <li>
+                  <a href="/about" className="text-muted-foreground hover:text-primary transition-colors">
+                    About Us
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
