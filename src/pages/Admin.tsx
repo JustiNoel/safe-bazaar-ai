@@ -481,11 +481,40 @@ export default function Admin() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-        </div>
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 p-4">
+          <div className="container mx-auto flex items-center gap-4">
+            <Skeleton className="h-8 w-8 rounded" />
+            <Skeleton className="h-6 w-48" />
+          </div>
+        </header>
+        <main className="container mx-auto px-4 py-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="p-6 space-y-3">
+                <div className="flex justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-5 w-5 rounded" />
+                </div>
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-3 w-32" />
+              </Card>
+            ))}
+          </div>
+          <Skeleton className="h-10 w-full max-w-lg rounded-md" />
+          <Card className="p-0">
+            <div className="p-4 space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-4 w-full max-w-[200px]" />
+                  <Skeleton className="h-4 w-full max-w-[150px]" />
+                  <Skeleton className="h-4 w-full max-w-[100px]" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </main>
       </div>
     );
   }
