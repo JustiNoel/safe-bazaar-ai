@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Crown, TrendingUp, Upload, CheckCircle, AlertCircle, Settings, Phone, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -120,8 +121,48 @@ const SellerDashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-muted/20 to-background">
+        <Navigation />
+        <main className="flex-1 pt-24 pb-16">
+          <div className="container mx-auto px-4 max-w-6xl space-y-8">
+            {/* Header skeleton */}
+            <div>
+              <Skeleton className="h-9 w-56 mb-2" />
+              <Skeleton className="h-4 w-72" />
+            </div>
+            {/* Trust Score Card skeleton */}
+            <Card className="p-8">
+              <div className="flex flex-col md:flex-row gap-8 items-center">
+                <Skeleton className="w-32 h-32 rounded-full" />
+                <div className="flex-1 space-y-4 w-full">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-4 w-full max-w-md" />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-20 rounded-lg" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+            {/* Tabs skeleton */}
+            <Skeleton className="h-10 w-full max-w-sm rounded-md" />
+            {/* Content skeleton */}
+            <Card className="p-6 space-y-4">
+              <Skeleton className="h-6 w-40" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-4 space-y-3">
+                    <Skeleton className="w-full h-32 rounded-lg" />
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-full" />
+                  </Card>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </main>
+        <Footer />
       </div>
     );
   }

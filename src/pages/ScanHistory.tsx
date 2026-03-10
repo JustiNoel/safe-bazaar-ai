@@ -8,6 +8,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import NotificationPreferences from "@/components/NotificationPreferences";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -148,8 +149,38 @@ export default function ScanHistory() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="pt-24 pb-16 px-4">
+          <div className="container mx-auto max-w-4xl space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <Skeleton className="h-8 w-40" />
+            </div>
+            <Skeleton className="h-4 w-64" />
+            <Skeleton className="h-10 w-full max-w-md rounded-md" />
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-stretch">
+                    <Skeleton className="w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 rounded-none" />
+                    <div className="flex-1 p-4 space-y-3">
+                      <div className="flex justify-between">
+                        <Skeleton className="h-5 w-40" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                      <Skeleton className="h-4 w-56" />
+                      <div className="flex justify-between">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -246,8 +277,27 @@ export default function ScanHistory() {
               </div>
 
               {isLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="space-y-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Card key={i} className="overflow-hidden">
+                      <CardContent className="p-0">
+                        <div className="flex items-stretch">
+                          <Skeleton className="w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 rounded-none" />
+                          <div className="flex-1 p-4 space-y-3">
+                            <div className="flex justify-between">
+                              <Skeleton className="h-5 w-40" />
+                              <Skeleton className="h-5 w-16 rounded-full" />
+                            </div>
+                            <Skeleton className="h-4 w-56" />
+                            <div className="flex justify-between">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-4 w-20" />
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               ) : filteredScans.length === 0 ? (
                 <motion.div
