@@ -35,7 +35,7 @@ export default function MpesaPaymentModal({
   const [error, setError] = useState("");
   const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
   const { checkMpesaPayment, refreshProfile } = useAuth();
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Poll for payment status
   useEffect(() => {
