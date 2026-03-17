@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import kenyaMapImg from "@/assets/kenya-map.png";
 
 interface CountyData {
   county_name: string;
@@ -236,85 +237,82 @@ export default function KenyaHeatmap() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <svg
-                viewBox="0 0 100 100"
-                className="w-full h-full"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                {/* Simplified Kenya outline */}
-                <path
-                  d="M25,5 L85,5 L95,25 L90,50 L85,85 L65,95 L35,80 L25,60 L15,45 L20,25 Z"
-                  fill="hsl(var(--muted))"
-                  stroke="hsl(var(--border))"
-                  strokeWidth="0.5"
+              <div className="relative w-full h-full">
+                {/* Real Kenya map image */}
+                <img
+                  src={kenyaMapImg}
+                  alt="Kenya county map"
+                  className="w-full h-full object-contain"
                 />
-                
-                {/* County hotspots */}
-                {countyData.map((county, index) => {
-                  const coords = countyCoordinates[county.county_name];
-                  if (!coords) return null;
+                {/* SVG overlay for hotspot dots */}
+                <svg
+                  viewBox="0 0 100 100"
+                  className="absolute inset-0 w-full h-full"
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  {countyData.map((county, index) => {
+                    const coords = countyCoordinates[county.county_name];
+                    if (!coords) return null;
 
-                  const isHovered = hoveredRegion?.county_name === county.county_name;
-                  const isSelected = selectedRegion?.county_name === county.county_name;
-                  const baseRadius = Math.min(2 + (county.total_scams / 80), 6);
-                  const radius = isHovered || isSelected ? baseRadius * 1.3 : baseRadius;
-                  
-                  return (
-                    <g key={county.county_name}>
-                      {/* Pulse animation for critical/high risk */}
-                      {(county.risk_level === "critical" || county.risk_level === "high") && (
+                    const isHovered = hoveredRegion?.county_name === county.county_name;
+                    const isSelected = selectedRegion?.county_name === county.county_name;
+                    const baseRadius = Math.min(2 + (county.total_scams / 80), 6);
+                    const radius = isHovered || isSelected ? baseRadius * 1.3 : baseRadius;
+                    
+                    return (
+                      <g key={county.county_name}>
+                        {(county.risk_level === "critical" || county.risk_level === "high") && (
+                          <motion.circle
+                            cx={coords.x}
+                            cy={coords.y}
+                            r={baseRadius}
+                            fill="none"
+                            stroke={getRiskColor(county.risk_level)}
+                            strokeWidth="0.5"
+                            initial={{ r: baseRadius, opacity: 0.8 }}
+                            animate={{ r: baseRadius * 2, opacity: 0 }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              delay: index * 0.1,
+                            }}
+                          />
+                        )}
+                        
                         <motion.circle
                           cx={coords.x}
                           cy={coords.y}
-                          r={baseRadius}
-                          fill="none"
-                          stroke={getRiskColor(county.risk_level)}
+                          r={radius}
+                          fill={getRiskColor(county.risk_level)}
+                          fillOpacity={isHovered || isSelected ? 0.9 : 0.7}
+                          stroke="hsl(var(--background))"
                           strokeWidth="0.5"
-                          initial={{ r: baseRadius, opacity: 0.8 }}
-                          animate={{ r: baseRadius * 2, opacity: 0 }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            delay: index * 0.1,
-                          }}
+                          className="cursor-pointer"
+                          onMouseEnter={() => setHoveredRegion(county)}
+                          onMouseLeave={() => setHoveredRegion(null)}
+                          onClick={() => setSelectedRegion(selectedRegion?.county_name === county.county_name ? null : county)}
+                          whileHover={{ scale: 1.2 }}
+                          transition={{ type: "spring", stiffness: 300 }}
                         />
-                      )}
-                      
-                      {/* Main hotspot circle */}
-                      <motion.circle
-                        cx={coords.x}
-                        cy={coords.y}
-                        r={radius}
-                        fill={getRiskColor(county.risk_level)}
-                        fillOpacity={isHovered || isSelected ? 0.9 : 0.7}
-                        stroke="hsl(var(--background))"
-                        strokeWidth="0.5"
-                        className="cursor-pointer"
-                        onMouseEnter={() => setHoveredRegion(county)}
-                        onMouseLeave={() => setHoveredRegion(null)}
-                        onClick={() => setSelectedRegion(selectedRegion?.county_name === county.county_name ? null : county)}
-                        whileHover={{ scale: 1.2 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                      />
-                      
-                      {/* County label (show on hover/select) */}
-                      {(isHovered || isSelected) && (
-                        <motion.text
-                          x={coords.x}
-                          y={coords.y - radius - 2}
-                          textAnchor="middle"
-                          fontSize="2.5"
-                          fill="hsl(var(--foreground))"
-                          initial={{ opacity: 0, y: 2 }}
-                          animate={{ opacity: 1, y: 0 }}
-                        >
-                          {county.county_name}
-                        </motion.text>
-                      )}
-                    </g>
-                  );
-                })}
-              </svg>
+                        
+                        {(isHovered || isSelected) && (
+                          <motion.text
+                            x={coords.x}
+                            y={coords.y - radius - 2}
+                            textAnchor="middle"
+                            fontSize="2.5"
+                            fill="hsl(var(--foreground))"
+                            initial={{ opacity: 0, y: 2 }}
+                            animate={{ opacity: 1, y: 0 }}
+                          >
+                            {county.county_name}
+                          </motion.text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
             )}
             
             {/* Tooltip */}
